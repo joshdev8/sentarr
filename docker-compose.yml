@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # Log monitoring service
+  sentarr-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentarr-monitor
+    restart: unless-stopped
+    
+    # Mount Plex logs (adjust path to match your Plex container's log volume)
+    volumes:
+      - /path/to/plex/config/Library/Application Support/Plex Media Server/Logs:/config/Library/Application Support/Plex Media Server/Logs:ro
+    
+    environment:
+      # Log monitoring settings
+      - PLEX_LOG_PATH=/config/Library/Application Support/Plex Media Server/Logs
+      - MONITOR_ERRORS=true
+      - MONITOR_WARNINGS=true
+      
+      # Alert thresholds
+      - ERROR_THRESHOLD=5                    # Number of errors before alerting
+      - TIME_WINDOW_MINUTES=5                # Time window to count errors
+      - ALERT_COOLDOWN_MINUTES=15            # Cooldown between similar alerts
+      
+      # Email alerts (SMTP)
+      - EMAIL_ENABLED=false
+      - SMTP_SERVER=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USER=your-email@gmail.com
+      - SMTP_PASSWORD=your-app-password
+      - EMAIL_FROM=sentarr@yourdomain.com
+      - EMAIL_TO=admin@yourdomain.com
+      
+      # Discord webhook
+      - DISCORD_ENABLED=false
+      - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_URL
+      
+      # Slack webhook
+      - SLACK_ENABLED=false
+      - SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR_WEBHOOK_URL
+      
+      # Custom webhook (for Home Assistant, ntfy, etc.)
+      - WEBHOOK_ENABLED=false
+      - CUSTOM_WEBHOOK_URL=http://homeassistant.local:8123/api/webhook/plex_alert
+    
+    networks:
+      - sentarr-network
+    
+    # Resource limits (optional)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # API backend service
+  sentarr-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: sentarr-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=5000
+      - EMAIL_ENABLED=${EMAIL_ENABLED:-false}
+      - DISCORD_ENABLED=${DISCORD_ENABLED:-false}
+      - SLACK_ENABLED=${SLACK_ENABLED:-false}
+      - WEBHOOK_ENABLED=${WEBHOOK_ENABLED:-false}
+      - SMTP_SERVER=${SMTP_SERVER}
+      - SMTP_USER=${SMTP_USER}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - CUSTOM_WEBHOOK_URL=${CUSTOM_WEBHOOK_URL}
+    
+    networks:
+      - sentarr-network
+    
+    depends_on:
+      - sentarr-monitor
+
+  # Frontend service
+  sentarr-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sentarr-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000/api
+    
+    networks:
+      - sentarr-network
+    
+    depends_on:
+      - sentarr-api
+
+networks:
+  sentarr-network:
+    driver: bridge
