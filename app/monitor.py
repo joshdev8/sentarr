@@ -10,6 +10,7 @@ Sentarr - Your Plex Server's Guardian
 
 Real-time monitoring of Plex Media Server logs
 Detects errors, warnings, and issues to send alerts via multiple channels
+Integrates with Plex API for enhanced monitoring
 """
 
 import os
@@ -20,8 +21,16 @@ import requests
 from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Optional
 import logging
+
+# Try to import plexapi
+try:
+    from plexapi.server import PlexServer
+    PLEXAPI_AVAILABLE = True
+except ImportError:
+    PLEXAPI_AVAILABLE = False
+    logging.warning("plexapi not available - Plex API features disabled")
 
 # Configure logging
 logging.basicConfig(
@@ -29,6 +38,76 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('sentarr')
+
+
+class PlexAPIMonitor:
+    """Monitor Plex via API for additional insights"""
+    
+    def __init__(self):
+        self.enabled = os.getenv('PLEX_API_ENABLED', 'false').lower() == 'true'
+        self.plex_url = os.getenv('PLEX_URL', 'http://plex:32400')
+        self.plex_token = os.getenv('PLEX_TOKEN', '')
+        self.plex = None
+        
+        if self.enabled and PLEXAPI_AVAILABLE and self.plex_token:
+            try:
+                self.plex = PlexServer(self.plex_url, self.plex_token)
+                logger.info(f"Connected to Plex: {self.plex.friendlyName}")
+            except Exception as e:
+                logger.error(f"Failed to connect to Plex API: {e}")
+                self.enabled = False
+        elif self.enabled and not self.plex_token:
+            logger.warning("PLEX_API_ENABLED=true but no PLEX_TOKEN provided")
+            self.enabled = False
+    
+    def get_server_status(self) -> Dict:
+        """Get Plex server status"""
+        if not self.enabled or not self.plex:
+            return {}
+        
+        try:
+            return {
+                'version': self.plex.version,
+                'platform': self.plex.platform,
+                'sessions': len(self.plex.sessions()),
+                'libraries': len(self.plex.library.sections()),
+            }
+        except Exception as e:
+            logger.error(f"Failed to get Plex status: {e}")
+            return {}
+    
+    def get_active_streams(self) -> List[Dict]:
+        """Get currently active streams"""
+        if not self.enabled or not self.plex:
+            return []
+        
+        try:
+            sessions = self.plex.sessions()
+            return [{
+                'user': session.usernames[0] if session.usernames else 'Unknown',
+                'title': session.title,
+                'state': session.player.state,
+                'progress': session.viewOffset,
+                'transcoding': session.transcodeSessions[0].videoDecision != 'direct play' if session.transcodeSessions else False
+            } for session in sessions]
+        except Exception as e:
+            logger.error(f"Failed to get active streams: {e}")
+            return []
+    
+    def check_library_issues(self) -> List[str]:
+        """Check for library scanning issues"""
+        if not self.enabled or not self.plex:
+            return []
+        
+        issues = []
+        try:
+            for section in self.plex.library.sections():
+                if hasattr(section, 'refreshing') and section.refreshing:
+                    issues.append(f"Library '{section.title}' is currently scanning")
+        except Exception as e:
+            logger.error(f"Failed to check library issues: {e}")
+        
+        return issues
 
 
 class AlertManager:

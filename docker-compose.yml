@@ -1,30 +1,47 @@
 version: '3.8'
 
 services:
-  # Log monitoring service
-  sentarr-monitor:
+  sentarr:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: sentarr-monitor
+      dockerfile: Dockerfile.unified
+    container_name: sentarr
     restart: unless-stopped
     
-    # Mount Plex logs (adjust path to match your Plex container's log volume)
+    ports:
+      - "6500:6500"  # Web UI
+    
     volumes:
-      - /path/to/plex/config/Library/Application Support/Plex Media Server/Logs:/config/Library/Application Support/Plex Media Server/Logs:ro
+      # Plex logs - Update this path!
+      - /path/to/plex/config/Library/Application Support/Plex Media Server/Logs:/logs:ro
+      # Optional: Persist config
+      - ./config:/config
     
     environment:
-      # Log monitoring settings
-      - PLEX_LOG_PATH=/config/Library/Application Support/Plex Media Server/Logs
+      # ============================================
+      # PLEX CONNECTION (Recommended)
+      # ============================================
+      - PLEX_API_ENABLED=true
+      - PLEX_URL=http://plex:32400              # URL to your Plex server
+      - PLEX_TOKEN=your-plex-token-here          # Get from: https://support.plex.tv/articles/204059436
+      
+      # ============================================
+      # LOG MONITORING
+      # ============================================
+      - PLEX_LOG_PATH=/logs
       - MONITOR_ERRORS=true
       - MONITOR_WARNINGS=true
       
-      # Alert thresholds
-      - ERROR_THRESHOLD=5                    # Number of errors before alerting
-      - TIME_WINDOW_MINUTES=5                # Time window to count errors
-      - ALERT_COOLDOWN_MINUTES=15            # Cooldown between similar alerts
+      # ============================================
+      # ALERT THRESHOLDS
+      # ============================================
+      - ERROR_THRESHOLD=5                        # Errors before alerting
+      - TIME_WINDOW_MINUTES=5                    # Time window to count errors
+      - ALERT_COOLDOWN_MINUTES=15                # Cooldown between similar alerts
       
-      # Email alerts (SMTP)
+      # ============================================
+      # EMAIL NOTIFICATIONS
+      # ============================================
       - EMAIL_ENABLED=false
       - SMTP_SERVER=smtp.gmail.com
       - SMTP_PORT=587
@@ -33,78 +50,38 @@ services:
       - EMAIL_FROM=sentarr@yourdomain.com
       - EMAIL_TO=admin@yourdomain.com
       
-      # Discord webhook
+      # ============================================
+      # DISCORD WEBHOOK
+      # ============================================
       - DISCORD_ENABLED=false
       - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_URL
       
-      # Slack webhook
+      # ============================================
+      # SLACK WEBHOOK
+      # ============================================
       - SLACK_ENABLED=false
       - SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR_WEBHOOK_URL
       
-      # Custom webhook (for Home Assistant, ntfy, etc.)
+      # ============================================
+      # CUSTOM WEBHOOK (Home Assistant, ntfy, etc)
+      # ============================================
       - WEBHOOK_ENABLED=false
       - CUSTOM_WEBHOOK_URL=http://homeassistant.local:8123/api/webhook/plex_alert
     
-    networks:
-      - sentarr-network
+    # Optional: Connect to Plex network for API access
+    # networks:
+    #   - plex
     
-    # Resource limits (optional)
+    # Optional: Resource limits
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 256M
+          cpus: '1.0'
+          memory: 512M
         reservations:
-          memory: 128M
+          memory: 256M
 
-  # API backend service
-  sentarr-api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    container_name: sentarr-api
-    restart: unless-stopped
-    ports:
-      - "5000:5000"
-    
-    environment:
-      - API_HOST=0.0.0.0
-      - API_PORT=5000
-      - EMAIL_ENABLED=${EMAIL_ENABLED:-false}
-      - DISCORD_ENABLED=${DISCORD_ENABLED:-false}
-      - SLACK_ENABLED=${SLACK_ENABLED:-false}
-      - WEBHOOK_ENABLED=${WEBHOOK_ENABLED:-false}
-      - SMTP_SERVER=${SMTP_SERVER}
-      - SMTP_USER=${SMTP_USER}
-      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
-      - CUSTOM_WEBHOOK_URL=${CUSTOM_WEBHOOK_URL}
-    
-    networks:
-      - sentarr-network
-    
-    depends_on:
-      - sentarr-monitor
-
-  # Frontend service
-  sentarr-frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: sentarr-frontend
-    restart: unless-stopped
-    ports:
-      - "3000:80"
-    
-    environment:
-      - REACT_APP_API_URL=http://localhost:5000/api
-    
-    networks:
-      - sentarr-network
-    
-    depends_on:
-      - sentarr-api
-
-networks:
-  sentarr-network:
-    driver: bridge
+# Optional: If using external Plex network
+# networks:
+#   plex:
+#     external: true
