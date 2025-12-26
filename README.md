@@ -1,4 +1,4 @@
-# Sentarr - Single Container Edition
+<div align="center">
 
 ```
    ____            _                  
@@ -8,345 +8,394 @@
   |____/ \___|_| |_|\__\__,_|_|  |_|  
 ```
 
+# Sentarr
+
 **Your Plex Server's Guardian** 🛡️
 
-> Like Radarr, Sonarr, and the other *arr apps - a single container solution for monitoring your Plex Media Server.
+[![Docker Pulls](https://img.shields.io/docker/pulls/joshdev8/sentarr?style=flat-square)](https://hub.docker.com/r/joshdev8/sentarr)
+[![Docker Image Size](https://img.shields.io/docker/image-size/joshdev8/sentarr/latest?style=flat-square)](https://hub.docker.com/r/joshdev8/sentarr)
+[![GitHub Stars](https://img.shields.io/github/stars/joshdev8/sentarr?style=flat-square)](https://github.com/joshdev8/sentarr)
+[![License](https://img.shields.io/github/license/joshdev8/sentarr?style=flat-square)](https://github.com/joshdev8/sentarr/blob/main/LICENSE)
+[![Version](https://img.shields.io/github/v/release/joshdev8/sentarr?style=flat-square)](https://github.com/joshdev8/sentarr/releases)
 
-## 🎯 What's Different About This Version?
+**Like Radarr for movies and Sonarr for TV shows, Sentarr stands watch over your Plex Media Server, alerting you to issues before they impact your users.**
 
-**All-in-One Container** - Everything runs in a single container:
-- ✅ Log monitoring service
-- ✅ REST API backend  
-- ✅ Web dashboard (React/TypeScript)
-- ✅ Plex API integration
-- ✅ Notification system
+[Features](#-features) • [Quick Start](#-quick-start) • [Screenshots](#-screenshots) • [Documentation](#-documentation) • [Support](#-support)
 
-Just like Radarr/Sonarr - one container, one port, simple setup!
+</div>
 
-## 🚀 Quick Start (60 Seconds)
+---
 
-### 1. Get Your Plex Token
+## 📸 Screenshots
 
-Visit: https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
+<div align="center">
 
-### 2. Create docker-compose.yml
+### Dashboard
+<img src="docs/screenshots/dashboard.png" alt="Dashboard" width="800"/>
+
+*Real-time monitoring with active streams, system resources, and alert timeline*
+
+### Plex Status
+<img src="docs/screenshots/plex-status.png" alt="Plex Status" width="800"/>
+
+*Live Plex server information with library counts and active streams*
+
+### Live Log Viewer
+<img src="docs/screenshots/log-viewer.png" alt="Log Viewer" width="800"/>
+
+*Real-time Plex log monitoring with filtering and search*
+
+</div>
+
+---
+
+## ✨ Features
+
+### 🎯 Comprehensive Monitoring
+- **Real-time Log Analysis** - Tails Plex logs and detects issues instantly
+- **Plex API Integration** - Direct connection to your Plex server for enhanced monitoring
+- **Active Stream Tracking** - Monitor who's watching what in real-time
+- **Smart Pattern Detection** - Identifies specific error types:
+  - Stream/Playback errors
+  - Database errors
+  - Network connectivity issues
+  - Authentication problems
+  - Scanner/Metadata issues
+  - Disk I/O errors
+  - Transcoding failures
+
+### 📊 Beautiful Web Dashboard
+- **Modern React UI** - Built with TypeScript, Vite, and Material-UI
+- **Real-time Updates** - Live data refresh every 5 seconds
+- **Mobile Responsive** - Works perfectly on phones and tablets
+- **Dark Theme** - Easy on the eyes for 24/7 monitoring
+- **Interactive Charts** - Visualize error trends and system health
+
+### 🔔 Multi-Channel Alerts
+- **Email (SMTP)** - Traditional email notifications
+- **Discord** - Webhook integration with rich embeds
+- **Slack** - Team notifications with customizable formatting
+- **Custom Webhooks** - Home Assistant, ntfy, Gotify, or any webhook-compatible service
+- **Smart Throttling** - Configurable cooldown to prevent alert spam
+- **Threshold-based** - Only alert when error count exceeds your threshold
+
+### 🐳 Easy Deployment
+- **Single Container** - Everything in one Docker container (like other *arr apps)
+- **Minimal Resources** - Uses ~256-512MB RAM, <5% CPU
+- **Works with Portainer** - One-click deployment
+- **Auto-restart** - Resilient and self-healing
+- **No Database** - Simple configuration via environment variables
+
+---
+
+## 🚀 Quick Start
+
+### Using Docker Compose (Recommended)
+
+1. **Create `docker-compose.yml`:**
 
 ```yaml
 version: '3.8'
 
 services:
   sentarr:
-    image: sentarr/sentarr:latest  # Or build locally
+    image: joshdev8/sentarr:latest
     container_name: sentarr
     restart: unless-stopped
     
     ports:
-      - "3000:3000"
+      - "6500:6500"
     
     volumes:
       # Update this path to your Plex logs
       - /opt/plex/config/Library/Application Support/Plex Media Server/Logs:/logs:ro
     
     environment:
-      # Plex Connection
+      # Plex API (Recommended)
       - PLEX_API_ENABLED=true
       - PLEX_URL=http://plex:32400
       - PLEX_TOKEN=your-plex-token-here
       
-      # Monitoring
+      # Log Monitoring
       - PLEX_LOG_PATH=/logs
       - MONITOR_ERRORS=true
       - ERROR_THRESHOLD=5
       
-      # Notifications (enable at least one)
+      # Discord Notifications
       - DISCORD_ENABLED=true
       - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_URL
     
-    # Connect to Plex network
     networks:
-      - plex
+      - plex  # Connect to your Plex network
 
 networks:
   plex:
     external: true
 ```
 
-### 3. Start It
+2. **Start Sentarr:**
 
 ```bash
 docker-compose up -d
 ```
 
-### 4. Access Dashboard
+3. **Access Dashboard:**
 
-Open: http://localhost:3000
+```
+http://localhost:6500
+```
 
-## 📦 What's Included?
+### Using Docker Run
 
-### Web Dashboard
-- Real-time statistics and metrics
-- Error timeline graphs
-- Active stream monitoring (via Plex API)
-- Alert management
-- Configuration interface
+```bash
+docker run -d \
+  --name=sentarr \
+  --restart=unless-stopped \
+  -p 6500:6500 \
+  -v /path/to/plex/logs:/logs:ro \
+  -e PLEX_API_ENABLED=true \
+  -e PLEX_URL=http://plex:32400 \
+  -e PLEX_TOKEN=your-token \
+  -e DISCORD_ENABLED=true \
+  -e DISCORD_WEBHOOK_URL=https://... \
+  joshdev8/sentarr:latest
+```
 
-### Monitoring
-- **Log Analysis** - Parses Plex logs for errors
-- **API Monitoring** - Tracks server health via Plex API
-- **Stream Tracking** - Monitors active playback sessions
-- **Pattern Detection** - Identifies specific error types
+### Using Portainer
 
-### Alerts
-- Multiple notification channels (Email, Discord, Slack, Webhooks)
-- Smart throttling (prevents spam)
-- Configurable thresholds
-- Detailed error context
+1. **Stacks** → **Add Stack**
+2. **Paste** docker-compose.yml
+3. **Deploy**
+4. **Done!**
+
+---
 
 ## 🔧 Configuration
 
-### Minimal Setup
+### Required Settings
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `PLEX_LOG_PATH` | Path to Plex logs | `/logs` |
+| `PLEX_URL` | Your Plex server URL | `http://plex:32400` |
+| `PLEX_TOKEN` | Plex API token | Get from [here](https://support.plex.tv/articles/204059436) |
+
+### Optional Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ERROR_THRESHOLD` | `5` | Errors before alerting |
+| `TIME_WINDOW_MINUTES` | `5` | Time window to count errors |
+| `ALERT_COOLDOWN_MINUTES` | `15` | Cooldown between alerts |
+| `MONITOR_WARNINGS` | `true` | Monitor warning-level logs |
+
+### Notification Channels
+
+<details>
+<summary><b>Discord</b></summary>
 
 ```yaml
-services:
-  sentarr:
-    image: sentarr/sentarr:latest
-    ports:
-      - "3000:3000"
-    volumes:
-      - /path/to/plex/logs:/logs:ro
-    environment:
-      - PLEX_LOG_PATH=/logs
-      - DISCORD_ENABLED=true
-      - DISCORD_WEBHOOK_URL=https://...
+- DISCORD_ENABLED=true
+- DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_URL
 ```
 
-### Full Setup with Plex API
+Create webhook: Server Settings → Integrations → Webhooks
+</details>
+
+<details>
+<summary><b>Email (SMTP)</b></summary>
 
 ```yaml
-services:
-  sentarr:
-    image: sentarr/sentarr:latest
-    ports:
-      - "3000:3000"
-    volumes:
-      - /path/to/plex/logs:/logs:ro
-      - ./sentarr-config:/config  # Optional: persist settings
-    environment:
-      # Plex API Integration
-      - PLEX_API_ENABLED=true
-      - PLEX_URL=http://plex:32400
-      - PLEX_TOKEN=your-token
-      
-      # Log Monitoring
-      - PLEX_LOG_PATH=/logs
-      - MONITOR_ERRORS=true
-      - MONITOR_WARNINGS=true
-      - ERROR_THRESHOLD=5
-      - TIME_WINDOW_MINUTES=5
-      - ALERT_COOLDOWN_MINUTES=15
-      
-      # Discord
-      - DISCORD_ENABLED=true
-      - DISCORD_WEBHOOK_URL=https://...
-      
-      # Email
-      - EMAIL_ENABLED=true
-      - SMTP_SERVER=smtp.gmail.com
-      - SMTP_PORT=587
-      - SMTP_USER=user@gmail.com
-      - SMTP_PASSWORD=app-password
-      - EMAIL_TO=admin@domain.com
+- EMAIL_ENABLED=true
+- SMTP_SERVER=smtp.gmail.com
+- SMTP_PORT=587
+- SMTP_USER=your-email@gmail.com
+- SMTP_PASSWORD=your-app-password
+- EMAIL_TO=admin@yourdomain.com
 ```
+</details>
 
-## 🌐 Accessing from Other Devices
-
-### Local Network
-
-```
-http://YOUR_SERVER_IP:3000
-```
-
-### Reverse Proxy (Recommended for Remote Access)
-
-#### Nginx
-
-```nginx
-server {
-    listen 80;
-    server_name sentarr.yourdomain.com;
-    
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-#### Traefik Labels
+<details>
+<summary><b>Slack</b></summary>
 
 ```yaml
-labels:
-  - "traefik.enable=true"
-  - "traefik.http.routers.sentarr.rule=Host(`sentarr.yourdomain.com`)"
-  - "traefik.http.services.sentarr.loadbalancer.server.port=3000"
+- SLACK_ENABLED=true
+- SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR_WEBHOOK_URL
+```
+</details>
+
+<details>
+<summary><b>Home Assistant</b></summary>
+
+```yaml
+- WEBHOOK_ENABLED=true
+- CUSTOM_WEBHOOK_URL=http://homeassistant.local:8123/api/webhook/plex_alert
 ```
 
-## 🔗 Plex API Integration
+See [PLEX_API_SETUP.md](PLEX_API_SETUP.md) for Home Assistant automation examples.
+</details>
 
-### Why Enable Plex API?
+---
 
-**Enhanced Features:**
-- See who's currently streaming
-- Monitor transcoding in real-time
-- Detect library scanning issues
-- Correlate errors with specific users/media
-- Track server performance
+## 📖 Documentation
 
-### Setup Guide
+- **[Plex API Setup](PLEX_API_SETUP.md)** - How to get your Plex token and configure API
+- **[Docker Compose Examples](DOCKER_COMPOSE_EXAMPLES.md)** - Various deployment scenarios
+- **[Vite Migration Guide](VITE_MIGRATION.md)** - Modern React setup details
 
-See [PLEX_API_SETUP.md](./PLEX_API_SETUP.md) for detailed instructions.
+---
 
-**Quick version:**
+## 🏗️ Architecture
 
-1. Get token: https://support.plex.tv/articles/204059436
-2. Find your Plex URL (usually `http://plex:32400` if in Docker)
-3. Add to docker-compose:
-   ```yaml
-   - PLEX_API_ENABLED=true
-   - PLEX_URL=http://plex:32400
-   - PLEX_TOKEN=your-token-here
-   ```
-
-### Without Plex API
-
-Sentarr works fine without API access - it just monitors logs. You'll miss:
-- Active stream tracking
-- Real-time server stats
-- User-specific error correlation
-
-## 📊 Dashboard Features
-
-### Main Dashboard
-- Server health status
-- Active alerts count
-- Error timeline (last hour)
-- Alert distribution chart
-- Recent alerts feed
-- Active streams (with API)
-
-### Alerts Page
-- View all active alerts
-- Filter by severity
-- Resolve with notes
-- Detailed error context
-- Quick actions
-
-### Settings
-- Adjust thresholds
-- Test notifications
-- Enable/disable channels
-- Configure monitoring
-
-## 🐳 Docker Tips
-
-### Use with Portainer
-
-1. Stacks → Add Stack
-2. Paste docker-compose.yml
-3. Add environment variables
-4. Deploy
-
-### Resource Usage
-
-Typical usage:
-- CPU: 2-5%
-- RAM: 256-512 MB
-- Disk: < 1 GB
-
-### Logs
-
-```bash
-# View all logs
-docker logs sentarr
-
-# Follow logs
-docker logs -f sentarr
-
-# Specific service
-docker exec sentarr tail -f /var/log/supervisor/monitor.log
+```
+┌─────────────────────────────────────────┐
+│         Sentarr Container               │
+│                                         │
+│  ┌──────────┐  ┌──────────┐  ┌────────┐│
+│  │  Nginx   │  │ Flask    │  │Monitor ││
+│  │  :6500   │→ │ API      │→ │Service ││
+│  │          │  │ :5000    │  │        ││
+│  └──────────┘  └──────────┘  └────────┘│
+│       ↓              ↓            ↓     │
+│  React Dashboard   API      Log Parser │
+└─────────────────────────────────────────┘
+              ↓            ↓
+         Plex API    Plex Logs
 ```
 
-### Restart Services
+**Single container includes:**
+- React/TypeScript frontend (Vite)
+- Flask REST API
+- Python log monitoring service
+- Nginx web server
+- Supervisor process manager
+
+---
+
+## 🎯 Use Cases
+
+### Home Media Server
+Monitor your personal Plex server and get alerted when:
+- Streams fail to start
+- Transcoding errors occur
+- Database issues arise
+- Scanner fails to process new media
+
+### Shared Plex Server
+Keep tabs on multiple users streaming:
+- See who's watching what in real-time
+- Track transcoding load
+- Monitor bandwidth usage
+- Get notified of playback issues
+
+### Plex with Friends/Family
+Proactive support for your users:
+- Fix issues before users complain
+- Monitor server health 24/7
+- Track library scanning problems
+- Detect authentication issues early
+
+---
+
+## 🆚 Comparison with Tautulli
+
+| Feature | Sentarr | Tautulli |
+|---------|---------|----------|
+| Real-time Log Monitoring | ✅ | ❌ |
+| Plex API Integration | ✅ | ✅ |
+| Detects Backend Errors | ✅ | ⚠️ Limited |
+| Modern React UI | ✅ | ❌ |
+| Database Required | ❌ | ✅ |
+| Resource Usage | ~256MB | ~512MB+ |
+| Alert Throttling | ✅ | ⚠️ Basic |
+| Single Container | ✅ | ✅ |
+
+**TL;DR:** Sentarr catches errors Tautulli misses by monitoring logs directly, not just API events.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Here's how:
+
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
+3. **Commit** your changes: `git commit -m 'Add amazing feature'`
+4. **Push** to the branch: `git push origin feature/amazing-feature`
+5. **Open** a Pull Request
+
+### Development Setup
 
 ```bash
-# Restart container
-docker restart sentarr
+# Clone repo
+git clone https://github.com/joshdev8/sentarr.git
+cd sentarr
 
-# Restart specific service inside container
-docker exec sentarr supervisorctl restart monitor
-docker exec sentarr supervisorctl restart api
-docker exec sentarr supervisorctl restart nginx
+# Backend development
+cd api
+pip install flask flask-cors requests plexapi
+python server.py
+
+# Frontend development
+cd frontend
+npm install
+npm run dev
 ```
 
-## 🔍 Finding Your Plex Log Path
+---
 
-### Docker Plex
+## 📊 Stats
 
+- **Single Container** - Like other *arr apps
+- **Minimal Resources** - 256-512MB RAM, <5% CPU
+- **Fast** - Vite-powered frontend builds in seconds
+- **Secure** - No deprecated dependencies, actively maintained
+- **TypeScript** - Fully typed frontend for reliability
+
+---
+
+## 💡 Tips & Tricks
+
+### Finding Your Plex Log Path
+
+**Docker Plex:**
 ```bash
-# Check your Plex container
 docker inspect plex | grep -A 5 Mounts
-
-# Common paths:
-# - /opt/plex/config/Library/Application Support/Plex Media Server/Logs
-# - /mnt/user/appdata/plex/Library/Application Support/Plex Media Server/Logs
 ```
 
-### Plex docker-compose.yml
+**Common paths:**
+- Docker: `/opt/plex/config/Library/Application Support/Plex Media Server/Logs`
+- Unraid: `/mnt/user/appdata/plex/Library/Application Support/Plex Media Server/Logs`
+- Synology: `/volume1/docker/plex/Library/Application Support/Plex Media Server/Logs`
 
-Look for the config volume mount:
-```yaml
-services:
-  plex:
-    volumes:
-      - /opt/plex/config:/config
-```
+### Getting Your Plex Token
 
-Then use: `/opt/plex/config/Library/Application Support/Plex Media Server/Logs`
+**Quick method:**
+1. Open Plex Web App
+2. Play any media
+3. Click ⋯ → "Get Info" → "View XML"
+4. Look for `X-Plex-Token` in the URL
 
-## 🎨 Customization
+**Full guide:** [PLEX_API_SETUP.md](PLEX_API_SETUP.md)
 
-### Change Port
+### Connecting to Plex Network
 
-```yaml
-ports:
-  - "8080:3000"  # Access at :8080
-```
+```bash
+# Find your Plex network
+docker network ls | grep plex
 
-### Add to Existing Network
-
-```yaml
-networks:
-  - plex
-  - traefik
-
+# Add to docker-compose.yml
 networks:
   plex:
     external: true
-  traefik:
-    external: true
 ```
 
-### Persist Configuration
-
-```yaml
-volumes:
-  - ./sentarr-data:/config
-```
+---
 
 ## 🐛 Troubleshooting
 
-### Dashboard won't load
+<details>
+<summary><b>Dashboard won't load</b></summary>
 
 ```bash
 # Check container is running
@@ -358,94 +407,63 @@ docker logs sentarr
 # Restart
 docker restart sentarr
 ```
+</details>
 
-### Can't connect to Plex API
+<details>
+<summary><b>Can't connect to Plex API</b></summary>
 
-```bash
-# Test from inside container
-docker exec sentarr curl http://plex:32400/identity
+1. Verify token is correct
+2. Check Plex URL (usually `http://plex:32400`)
+3. Ensure containers are on same network
+4. Test: `docker exec sentarr curl http://plex:32400/identity`
+</details>
 
-# Check network
-docker exec sentarr ping plex
-```
+<details>
+<summary><b>No alerts appearing</b></summary>
 
-### No alerts appearing
-
-1. Check log path is correct
+1. Check log path is correct: `docker exec sentarr ls /logs`
 2. Verify at least one notification channel is enabled
 3. Check error threshold settings
-4. Generate test error in Plex
-
-### High CPU/Memory
-
-```yaml
-deploy:
-  resources:
-    limits:
-      cpus: '0.5'
-      memory: 256M
-```
-
-## 📱 Mobile Access
-
-The dashboard is fully responsive and works great on mobile devices. Just access via your server's IP:
-
-```
-http://192.168.1.100:3000
-```
-
-## 🔄 Updates
-
-```bash
-# Pull latest image
-docker pull sentarr/sentarr:latest
-
-# Restart with new image
-docker-compose up -d
-
-# Or rebuild locally
-docker-compose build --no-cache
-docker-compose up -d
-```
-
-## 🆚 Comparison with Multi-Container
-
-| Feature | Single Container | Multi-Container |
-|---------|-----------------|-----------------|
-| Setup | ✅ Easier | ⚠️ More complex |
-| Ports | 1 (3000) | 2 (3000, 5000) |
-| Resources | Lower | Higher |
-| Maintenance | Simple | Moderate |
-| Scaling | Limited | Better |
-| Development | Harder | Easier |
-
-**Single container is recommended for most users** - it's simpler and uses fewer resources.
-
-## 📚 Documentation
-
-- [Plex API Setup](./PLEX_API_SETUP.md) - How to get and use your Plex token
-- [Docker Compose Examples](./DOCKER_COMPOSE_EXAMPLES.md) - Various configurations
-- [Troubleshooting Guide](./TROUBLESHOOTING.md) - Common issues and fixes
-
-## 🤝 Integration with Other *arr Apps
-
-Sentarr plays nice with your existing stack:
-
-```yaml
-version: '3.8'
-services:
-  plex:
-    # ...
-  radarr:
-    # ...
-  sonarr:
-    # ...
-  sentarr:
-    # ... same network, same simplicity
-```
-
-All in the same network, all with the same pattern - just works! 🎉
+4. Look at Settings page in dashboard
+</details>
 
 ---
 
-**Sentarr** - Your Plex Server's Guardian 🛡️
+## 📜 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- Inspired by the amazing **[*arr ecosystem](https://wiki.servarr.com/)** (Radarr, Sonarr, etc.)
+- Built with **[React](https://react.dev/)**, **[Material-UI](https://mui.com/)**, and **[Flask](https://flask.palletsprojects.com/)**
+- Special thanks to the **Plex** community
+
+---
+
+## 🔗 Links
+
+- **GitHub:** [github.com/joshdev8/sentarr](https://github.com/joshdev8/sentarr)
+- **Docker Hub:** [hub.docker.com/r/joshdev8/sentarr](https://hub.docker.com/r/joshdev8/sentarr)
+- **Issues:** [github.com/joshdev8/sentarr/issues](https://github.com/joshdev8/sentarr/issues)
+- **Discussions:** [github.com/joshdev8/sentarr/discussions](https://github.com/joshdev8/sentarr/discussions)
+
+---
+
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=joshdev8/sentarr&type=Date)](https://star-history.com/#joshdev8/sentarr&Date)
+
+---
+
+<div align="center">
+
+**Made with ❤️ for the Plex community**
+
+If you find this useful, please ⭐ star the repo!
+
+[Report Bug](https://github.com/joshdev8/sentarr/issues) • [Request Feature](https://github.com/joshdev8/sentarr/discussions)
+
+</div>
