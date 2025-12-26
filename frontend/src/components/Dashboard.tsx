@@ -11,6 +11,9 @@ import {
   useTheme,
   alpha,
   Skeleton,
+  CardActionArea,
+  Avatar,
+  Tooltip,
 } from "@mui/material";
 import {
   TrendingUp,
@@ -19,6 +22,11 @@ import {
   Tv,
   Movie,
   PlayArrow,
+  Speed,
+  Storage,
+  Wifi,
+  NewReleases,
+  History,
 } from "@mui/icons-material";
 import {
   AreaChart,
@@ -26,21 +34,19 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts";
 
 import {
   Stats,
   Alert,
   TimelineDataPoint,
-  AlertTypeData,
-  AlertSeverity,
   PlexStatus,
   PlexStream,
+  PlexMediaItem,
+  SystemMetrics,
+  PageType,
 } from "../types";
 import { apiService } from "../services/api";
 
@@ -52,6 +58,7 @@ interface StatCardProps {
   subtitle?: string;
   trend?: number;
   loading?: boolean;
+  onClick?: () => void;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
@@ -62,12 +69,14 @@ const StatCard: React.FC<StatCardProps> = ({
   subtitle,
   trend,
   loading,
+  onClick,
 }) => {
-  return (
+  const content = (
     <Card
       sx={{
         position: "relative",
         overflow: "hidden",
+        cursor: onClick ? "pointer" : "default",
         "&::before": {
           content: '""',
           position: "absolute",
@@ -78,10 +87,12 @@ const StatCard: React.FC<StatCardProps> = ({
           background: `linear-gradient(90deg, ${color} 0%, ${alpha(color, 0.3)} 100%)`,
         },
         transition: "transform 0.2s, box-shadow 0.2s",
-        "&:hover": {
-          transform: "translateY(-4px)",
-          boxShadow: `0 8px 24px ${alpha(color, 0.3)}`,
-        },
+        "&:hover": onClick
+          ? {
+              transform: "translateY(-4px)",
+              boxShadow: `0 8px 24px ${alpha(color, 0.3)}`,
+            }
+          : {},
       }}
     >
       <CardContent>
@@ -141,64 +152,240 @@ const StatCard: React.FC<StatCardProps> = ({
       </CardContent>
     </Card>
   );
+
+  return onClick ? (
+    <CardActionArea onClick={onClick}>{content}</CardActionArea>
+  ) : (
+    content
+  );
 };
 
-interface AlertTypeChartProps {
-  data: AlertTypeData[];
+interface ActiveStreamCardProps {
+  stream: PlexStream;
+  onClick?: () => void;
 }
 
-const AlertTypeChart: React.FC<AlertTypeChartProps> = ({ data }) => {
+const ActiveStreamCard: React.FC<ActiveStreamCardProps> = ({
+  stream,
+  onClick,
+}) => {
   const theme = useTheme();
 
-  const COLORS: Record<string, string> = {
-    stream_error: theme.palette.error.main,
-    database_error: theme.palette.warning.main,
-    network_error: theme.palette.info.main,
-    auth_error: theme.palette.secondary.main,
-    scanner_error: theme.palette.success.main,
-    disk_error: theme.palette.error.dark,
+  const formatBitrate = (kbps?: number): string => {
+    if (!kbps) return "";
+    if (kbps >= 1000) return `${(kbps / 1000).toFixed(1)} Mbps`;
+    return `${kbps} kbps`;
   };
 
-  if (data.length === 0) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: 300,
-        }}
-      >
-        <Typography color="text.secondary">No alert data</Typography>
+  return (
+    <Paper
+      onClick={onClick}
+      sx={{
+        p: 2,
+        mb: 2,
+        background: alpha(theme.palette.success.main, 0.05),
+        border: 1,
+        borderColor: alpha(theme.palette.success.main, 0.2),
+        borderRadius: 2,
+        cursor: onClick ? "pointer" : "default",
+        transition: "transform 0.2s",
+        "&:hover": onClick ? { transform: "translateX(4px)" } : {},
+      }}
+    >
+      <Box sx={{ display: "flex", gap: 2 }}>
+        {/* Poster/Thumbnail */}
+        {stream.thumb ? (
+          <Box
+            component="img"
+            src={stream.thumb}
+            alt={stream.title}
+            sx={{
+              width: 60,
+              height: 90,
+              borderRadius: 1,
+              objectFit: "cover",
+            }}
+            onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        ) : (
+          <Box
+            sx={{
+              width: 60,
+              height: 90,
+              borderRadius: 1,
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {stream.type === "episode" ? <Tv /> : <Movie />}
+          </Box>
+        )}
+
+        <Box sx={{ flex: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+            <Avatar
+              sx={{
+                width: 24,
+                height: 24,
+                bgcolor: "primary.main",
+                fontSize: 12,
+              }}
+            >
+              {stream.user.charAt(0).toUpperCase()}
+            </Avatar>
+            <Typography variant="body2" fontWeight={600}>
+              {stream.user}
+            </Typography>
+            <Chip
+              label={stream.player.state}
+              size="small"
+              color={stream.player.state === "playing" ? "success" : "default"}
+              sx={{ ml: "auto", height: 20, fontSize: "0.7rem" }}
+            />
+          </Box>
+
+          <Typography variant="subtitle2" fontWeight={600} noWrap>
+            {stream.grandparentTitle
+              ? `${stream.grandparentTitle}`
+              : stream.title}
+          </Typography>
+          {stream.grandparentTitle && (
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {stream.parentTitle} - {stream.title}
+              {stream.episodeInfo &&
+                ` (S${stream.episodeInfo.seasonNumber}E${stream.episodeInfo.episodeNumber})`}
+            </Typography>
+          )}
+
+          {/* Quality/Transcoding info */}
+          <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
+            {stream.mediaInfo?.videoResolution && (
+              <Chip
+                label={stream.mediaInfo.videoResolution.toUpperCase()}
+                size="small"
+                variant="outlined"
+                sx={{ height: 20, fontSize: "0.65rem" }}
+              />
+            )}
+            {stream.transcoding ? (
+              <Chip
+                label="Transcoding"
+                size="small"
+                color="warning"
+                sx={{ height: 20, fontSize: "0.65rem" }}
+              />
+            ) : (
+              <Chip
+                label="Direct Play"
+                size="small"
+                color="success"
+                sx={{ height: 20, fontSize: "0.65rem" }}
+              />
+            )}
+            {stream.bandwidth && (
+              <Chip
+                label={formatBitrate(stream.bandwidth)}
+                size="small"
+                variant="outlined"
+                sx={{ height: 20, fontSize: "0.65rem" }}
+              />
+            )}
+          </Box>
+
+          {/* Progress */}
+          <Box sx={{ mt: 1 }}>
+            <LinearProgress
+              variant="determinate"
+              value={stream.progress}
+              sx={{ height: 4, borderRadius: 2 }}
+            />
+          </Box>
+        </Box>
       </Box>
-    );
-  }
+    </Paper>
+  );
+};
+
+interface MediaItemCardProps {
+  item: PlexMediaItem;
+  type: "recently-added" | "on-deck";
+}
+
+const MediaItemCard: React.FC<MediaItemCardProps> = ({ item, type }) => {
+  const theme = useTheme();
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          labelLine={false}
-          label={({ name, percent }) =>
-            `${name}: ${(percent * 100).toFixed(0)}%`
-          }
-          outerRadius={100}
-          fill="#8884d8"
-          dataKey="value"
-        >
-          {data.map((entry, index) => (
-            <Cell
-              key={`cell-${index}`}
-              fill={COLORS[entry.name] || theme.palette.primary.main}
+    <Tooltip title={item.title} arrow>
+      <Paper
+        sx={{
+          width: 100,
+          flexShrink: 0,
+          overflow: "hidden",
+          borderRadius: 2,
+          transition: "transform 0.2s",
+          "&:hover": { transform: "scale(1.05)" },
+        }}
+      >
+        {item.thumb ? (
+          <Box
+            component="img"
+            src={item.thumb}
+            alt={item.title}
+            sx={{
+              width: "100%",
+              height: 150,
+              objectFit: "cover",
+            }}
+            onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+              e.currentTarget.src = "";
+              e.currentTarget.style.backgroundColor = alpha(
+                theme.palette.primary.main,
+                0.1,
+              );
+            }}
+          />
+        ) : (
+          <Box
+            sx={{
+              width: "100%",
+              height: 150,
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {item.type === "episode" ? <Tv /> : <Movie />}
+          </Box>
+        )}
+        <Box sx={{ p: 1 }}>
+          <Typography variant="caption" noWrap display="block" fontWeight={600}>
+            {item.grandparentTitle || item.title}
+          </Typography>
+          {item.grandparentTitle && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              noWrap
+              display="block"
+            >
+              {item.title}
+            </Typography>
+          )}
+          {type === "on-deck" && item.progress !== undefined && (
+            <LinearProgress
+              variant="determinate"
+              value={item.progress}
+              sx={{ mt: 0.5, height: 2, borderRadius: 1 }}
             />
-          ))}
-        </Pie>
-        <Tooltip />
-      </PieChart>
-    </ResponsiveContainer>
+          )}
+        </Box>
+      </Paper>
+    </Tooltip>
   );
 };
 
@@ -216,7 +403,7 @@ const ErrorTimelineChart: React.FC<ErrorTimelineChartProps> = ({ data }) => {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          height: 300,
+          height: 200,
         }}
       >
         <Typography color="text.secondary">No timeline data</Typography>
@@ -225,7 +412,7 @@ const ErrorTimelineChart: React.FC<ErrorTimelineChartProps> = ({ data }) => {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={200}>
       <AreaChart data={data}>
         <defs>
           <linearGradient id="colorErrors" x1="0" y1="0" x2="0" y2="1">
@@ -260,13 +447,13 @@ const ErrorTimelineChart: React.FC<ErrorTimelineChartProps> = ({ data }) => {
         <XAxis
           dataKey="time"
           stroke={theme.palette.text.secondary}
-          style={{ fontSize: "12px" }}
+          style={{ fontSize: "10px" }}
         />
         <YAxis
           stroke={theme.palette.text.secondary}
-          style={{ fontSize: "12px" }}
+          style={{ fontSize: "10px" }}
         />
-        <Tooltip
+        <RechartsTooltip
           contentStyle={{
             backgroundColor: theme.palette.background.paper,
             border: `1px solid ${theme.palette.divider}`,
@@ -294,137 +481,39 @@ const ErrorTimelineChart: React.FC<ErrorTimelineChartProps> = ({ data }) => {
   );
 };
 
-interface RecentAlertProps {
-  alert: Alert;
-}
-
-const RecentAlert: React.FC<RecentAlertProps> = ({ alert }) => {
-  const theme = useTheme();
-
-  const severityColors: Record<AlertSeverity, string> = {
-    critical: theme.palette.error.main,
-    error: theme.palette.error.light,
-    warning: theme.palette.warning.main,
-    info: theme.palette.info.main,
-  };
-
-  return (
-    <Paper
-      sx={{
-        p: 2,
-        mb: 2,
-        background: alpha(severityColors[alert.severity], 0.05),
-        border: 1,
-        borderColor: alpha(severityColors[alert.severity], 0.2),
-        borderRadius: 2,
-        transition: "transform 0.2s",
-        "&:hover": {
-          transform: "translateX(4px)",
-        },
-      }}
-    >
-      <Box sx={{ display: "flex", alignItems: "flex-start", mb: 1 }}>
-        <Chip
-          label={alert.severity.toUpperCase()}
-          size="small"
-          sx={{
-            backgroundColor: severityColors[alert.severity],
-            color: "white",
-            fontWeight: 600,
-            mr: 1,
-          }}
-        />
-        <Typography variant="caption" color="text.secondary">
-          {new Date(alert.timestamp).toLocaleString()}
-        </Typography>
-      </Box>
-
-      <Typography variant="body1" fontWeight={600} sx={{ mb: 0.5 }}>
-        {alert.title}
-      </Typography>
-
-      <Typography variant="body2" color="text.secondary">
-        {alert.message}
-      </Typography>
-
-      {alert.pattern && (
-        <Chip
-          label={alert.pattern.replace("_", " ")}
-          size="small"
-          variant="outlined"
-          sx={{ mt: 1 }}
-        />
-      )}
-    </Paper>
-  );
-};
-
-interface ActiveStreamCardProps {
-  stream: PlexStream;
-}
-
-const ActiveStreamCard: React.FC<ActiveStreamCardProps> = ({ stream }) => {
-  const theme = useTheme();
-
-  return (
-    <Paper
-      sx={{
-        p: 2,
-        mb: 2,
-        background: alpha(theme.palette.success.main, 0.05),
-        border: 1,
-        borderColor: alpha(theme.palette.success.main, 0.2),
-        borderRadius: 2,
-      }}
-    >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-        <PlayArrow sx={{ color: "success.main", fontSize: 18 }} />
-        <Typography variant="body2" fontWeight={600}>
-          {stream.user}
-        </Typography>
-        <Chip
-          label={stream.player.state}
-          size="small"
-          color={stream.player.state === "playing" ? "success" : "default"}
-          sx={{ ml: "auto", height: 20, fontSize: "0.7rem" }}
-        />
-      </Box>
-      <Typography variant="body2" color="text.secondary" noWrap>
-        {stream.grandparentTitle ? `${stream.grandparentTitle} - ` : ""}
-        {stream.title}
-      </Typography>
-      <LinearProgress
-        variant="determinate"
-        value={stream.progress}
-        sx={{ mt: 1, height: 4, borderRadius: 2 }}
-      />
-    </Paper>
-  );
-};
-
 interface DashboardProps {
   stats: Stats;
   alerts: Alert[];
+  onNavigate?: (page: PageType) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ stats, alerts }) => {
+const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
   const theme = useTheme();
   const [plexStatus, setPlexStatus] = useState<PlexStatus | null>(null);
   const [streams, setStreams] = useState<PlexStream[]>([]);
+  const [recentlyAdded, setRecentlyAdded] = useState<PlexMediaItem[]>([]);
+  const [onDeck, setOnDeck] = useState<PlexMediaItem[]>([]);
+  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [timelineData, setTimelineData] = useState<TimelineDataPoint[]>([]);
-  const [alertTypeData, setAlertTypeData] = useState<AlertTypeData[]>([]);
   const [systemHealth, setSystemHealth] = useState(100);
 
   useEffect(() => {
     const fetchPlexData = async () => {
       try {
-        const [statusData, streamsData] = await Promise.all([
-          apiService.getPlexStatus(),
-          apiService.getPlexStreams(),
-        ]);
+        const [statusData, streamsData, recentData, deckData, metricsData] =
+          await Promise.all([
+            apiService.getPlexStatus(),
+            apiService.getPlexStreams(),
+            apiService.getRecentlyAdded(12),
+            apiService.getOnDeck(12),
+            apiService.getSystemMetrics(),
+          ]);
         setPlexStatus(statusData);
         setStreams(streamsData.streams || []);
+        setRecentlyAdded(recentData.items || []);
+        setOnDeck(deckData.items || []);
+        setMetrics(metricsData);
       } catch (error) {
         console.error("Failed to fetch Plex data:", error);
       } finally {
@@ -438,7 +527,6 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts }) => {
   }, []);
 
   useEffect(() => {
-    // Generate timeline data from alerts
     const now = new Date();
     const data: TimelineDataPoint[] = [];
 
@@ -449,7 +537,6 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts }) => {
         minute: "2-digit",
       });
 
-      // Count alerts in this time window
       const windowStart = new Date(time.getTime() - 5 * 60000);
       const windowAlerts = alerts.filter((a) => {
         const alertTime = new Date(a.timestamp);
@@ -466,21 +553,8 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts }) => {
     }
 
     setTimelineData(data);
-
-    // Generate alert type distribution from real data
-    const typeCounts: Record<string, number> = {};
-    alerts.forEach((alert) => {
-      if (alert.pattern) {
-        typeCounts[alert.pattern] = (typeCounts[alert.pattern] || 0) + 1;
-      }
-    });
-
-    setAlertTypeData(
-      Object.entries(typeCounts).map(([name, value]) => ({ name, value })),
-    );
   }, [alerts]);
 
-  // Calculate system health based on alerts and Plex status
   useEffect(() => {
     let health = 100;
     health -= (stats.errorCount || 0) * 5;
@@ -489,7 +563,19 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts }) => {
     setSystemHealth(Math.max(0, Math.min(100, health)));
   }, [stats, plexStatus]);
 
-  const recentAlerts = alerts.filter((a) => a.status === "open").slice(0, 3);
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  };
+
+  const formatBitrate = (kbps?: number): string => {
+    if (!kbps) return "0 kbps";
+    if (kbps >= 1000) return `${(kbps / 1000).toFixed(1)} Mbps`;
+    return `${kbps} kbps`;
+  };
 
   return (
     <Box>
@@ -506,7 +592,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts }) => {
 
       {/* Stats Grid */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <StatCard
             title="Active Streams"
             value={streams.length}
@@ -516,10 +602,11 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts }) => {
               plexStatus?.connected ? "Plex connected" : "Plex disconnected"
             }
             loading={loading}
+            onClick={() => onNavigate?.("plex-status")}
           />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <StatCard
             title="Open Alerts"
             value={stats.openAlerts || 0}
@@ -530,21 +617,23 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts }) => {
                 : theme.palette.success.main
             }
             subtitle="Requires attention"
+            onClick={() => onNavigate?.("open-alerts")}
           />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <StatCard
-            title="Movies"
-            value={plexStatus?.totalMovies || 0}
-            icon={Movie}
+            title="Bandwidth"
+            value={formatBitrate(plexStatus?.bandwidth)}
+            icon={Wifi}
             color={theme.palette.info.main}
-            subtitle="In library"
+            subtitle={`${streams.filter((s) => s.transcoding).length} transcoding`}
             loading={loading}
+            onClick={() => onNavigate?.("plex-status")}
           />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <StatCard
             title="System Health"
             value={`${systemHealth}%`}
@@ -557,208 +646,283 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts }) => {
                   : theme.palette.error.main
             }
             subtitle="Overall status"
+            onClick={() => onNavigate?.("settings")}
           />
         </Grid>
       </Grid>
 
-      {/* Charts Grid */}
+      {/* Active Streams & System Metrics */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
+        {/* Active Streams */}
         <Grid item xs={12} lg={8}>
           <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                Alert Timeline (Last Hour)
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Real-time error and warning detection
-              </Typography>
-              <ErrorTimelineChart data={timelineData} />
-            </CardContent>
+            <CardActionArea onClick={() => onNavigate?.("plex-status")}>
+              <CardContent>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    mb: 2,
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Active Streams ({streams.length})
+                  </Typography>
+                  {streams.length > 0 && (
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                      <Chip
+                        label={`${streams.filter((s) => !s.transcoding).length} Direct`}
+                        size="small"
+                        color="success"
+                        variant="outlined"
+                      />
+                      <Chip
+                        label={`${streams.filter((s) => s.transcoding).length} Transcode`}
+                        size="small"
+                        color="warning"
+                        variant="outlined"
+                      />
+                    </Box>
+                  )}
+                </Box>
+              </CardContent>
+            </CardActionArea>
+            <Box sx={{ px: 2, pb: 2, maxHeight: 400, overflowY: "auto" }}>
+              {loading ? (
+                <Skeleton
+                  variant="rectangular"
+                  height={100}
+                  sx={{ borderRadius: 2 }}
+                />
+              ) : streams.length > 0 ? (
+                streams.map((stream) => (
+                  <ActiveStreamCard
+                    key={stream.id}
+                    stream={stream}
+                    onClick={() => onNavigate?.("plex-status")}
+                  />
+                ))
+              ) : (
+                <Box sx={{ textAlign: "center", py: 4 }}>
+                  <PlayArrow
+                    sx={{
+                      fontSize: 48,
+                      color: "text.secondary",
+                      opacity: 0.5,
+                      mb: 1,
+                    }}
+                  />
+                  <Typography variant="body1" color="text.secondary">
+                    No active streams
+                  </Typography>
+                </Box>
+              )}
+            </Box>
           </Card>
         </Grid>
 
+        {/* System Metrics */}
         <Grid item xs={12} lg={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                Alert Distribution
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                By error type
-              </Typography>
-              <AlertTypeChart data={alertTypeData} />
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Status Grid */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} lg={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                System Status
-              </Typography>
-
-              <Box sx={{ mb: 3 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    mb: 1,
-                  }}
-                >
-                  <Typography variant="body2">Plex Server</Typography>
-                  <Chip
-                    label={plexStatus?.connected ? "CONNECTED" : "DISCONNECTED"}
-                    size="small"
-                    color={plexStatus?.connected ? "success" : "error"}
-                  />
-                </Box>
-                <LinearProgress
-                  variant="determinate"
-                  value={plexStatus?.connected ? 100 : 0}
-                  sx={{
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: alpha(
-                      plexStatus?.connected
-                        ? theme.palette.success.main
-                        : theme.palette.error.main,
-                      0.1,
-                    ),
-                    "& .MuiLinearProgress-bar": {
-                      backgroundColor: plexStatus?.connected
-                        ? theme.palette.success.main
-                        : theme.palette.error.main,
-                    },
-                  }}
-                />
-              </Box>
-
-              <Box sx={{ mb: 3 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    mb: 1,
-                  }}
-                >
-                  <Typography variant="body2">Log Monitoring</Typography>
-                  <Chip label="ACTIVE" size="small" color="success" />
-                </Box>
-                <LinearProgress
-                  variant="determinate"
-                  value={100}
-                  sx={{
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: alpha(theme.palette.success.main, 0.1),
-                    "& .MuiLinearProgress-bar": {
-                      backgroundColor: theme.palette.success.main,
-                    },
-                  }}
-                />
-              </Box>
-
-              <Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    mb: 1,
-                  }}
-                >
-                  <Typography variant="body2">Server Health</Typography>
-                  <Chip
-                    label={
-                      systemHealth > 80
-                        ? "HEALTHY"
-                        : systemHealth > 50
-                          ? "DEGRADED"
-                          : "CRITICAL"
-                    }
-                    size="small"
-                    color={
-                      systemHealth > 80
-                        ? "success"
-                        : systemHealth > 50
-                          ? "warning"
-                          : "error"
-                    }
-                  />
-                </Box>
-                <LinearProgress
-                  variant="determinate"
-                  value={systemHealth}
-                  sx={{
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: alpha(
-                      systemHealth > 80
-                        ? theme.palette.success.main
-                        : systemHealth > 50
-                          ? theme.palette.warning.main
-                          : theme.palette.error.main,
-                      0.1,
-                    ),
-                    "& .MuiLinearProgress-bar": {
-                      backgroundColor:
-                        systemHealth > 80
-                          ? theme.palette.success.main
-                          : systemHealth > 50
-                            ? theme.palette.warning.main
-                            : theme.palette.error.main,
-                    },
-                  }}
-                />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} lg={6}>
           <Card sx={{ height: "100%" }}>
             <CardContent>
               <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                {streams.length > 0 ? "Active Streams" : "Recent Alerts"}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                {streams.length > 0
-                  ? `${streams.length} active stream${streams.length !== 1 ? "s" : ""}`
-                  : "Latest alerts"}
+                System Resources
               </Typography>
 
-              <Box sx={{ maxHeight: 350, overflowY: "auto" }}>
-                {streams.length > 0 ? (
-                  streams
-                    .slice(0, 4)
-                    .map((stream) => (
-                      <ActiveStreamCard key={stream.id} stream={stream} />
-                    ))
-                ) : recentAlerts.length > 0 ? (
-                  recentAlerts.map((alert) => (
-                    <RecentAlert key={alert.id} alert={alert} />
-                  ))
-                ) : (
-                  <Box sx={{ textAlign: "center", py: 4 }}>
-                    <CheckCircle
-                      sx={{ fontSize: 48, color: "success.main", mb: 2 }}
+              {metrics ? (
+                <Box>
+                  <Box sx={{ mb: 3 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        mb: 1,
+                      }}
+                    >
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <Speed sx={{ fontSize: 18, color: "primary.main" }} />
+                        <Typography variant="body2">CPU</Typography>
+                      </Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        {metrics.cpu.percent.toFixed(1)}%
+                      </Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={metrics.cpu.percent}
+                      sx={{ height: 8, borderRadius: 4 }}
+                      color={
+                        metrics.cpu.percent > 80
+                          ? "error"
+                          : metrics.cpu.percent > 50
+                            ? "warning"
+                            : "primary"
+                      }
                     />
-                    <Typography variant="body1" color="text.secondary">
-                      All systems operational
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      No active streams or alerts
-                    </Typography>
                   </Box>
-                )}
-              </Box>
+
+                  <Box sx={{ mb: 3 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        mb: 1,
+                      }}
+                    >
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <Storage
+                          sx={{ fontSize: 18, color: "secondary.main" }}
+                        />
+                        <Typography variant="body2">Memory</Typography>
+                      </Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        {formatBytes(metrics.memory.used)} /{" "}
+                        {formatBytes(metrics.memory.total)}
+                      </Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={metrics.memory.percent}
+                      sx={{ height: 8, borderRadius: 4 }}
+                      color={
+                        metrics.memory.percent > 80
+                          ? "error"
+                          : metrics.memory.percent > 50
+                            ? "warning"
+                            : "secondary"
+                      }
+                    />
+                  </Box>
+
+                  <Box sx={{ mb: 3 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        mb: 1,
+                      }}
+                    >
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <Storage sx={{ fontSize: 18, color: "info.main" }} />
+                        <Typography variant="body2">Disk</Typography>
+                      </Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        {formatBytes(metrics.disk.free)} free
+                      </Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={metrics.disk.percent}
+                      sx={{ height: 8, borderRadius: 4 }}
+                      color={
+                        metrics.disk.percent > 80
+                          ? "error"
+                          : metrics.disk.percent > 50
+                            ? "warning"
+                            : "info"
+                      }
+                    />
+                  </Box>
+
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ textAlign: "center" }}
+                  >
+                    Uptime: {metrics.uptimeFormatted}
+                  </Typography>
+                </Box>
+              ) : (
+                <Skeleton variant="rectangular" height={200} />
+              )}
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+
+      {/* Recently Added */}
+      {recentlyAdded.length > 0 && (
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+              <NewReleases sx={{ color: "primary.main" }} />
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Recently Added
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 2,
+                overflowX: "auto",
+                pb: 1,
+                "&::-webkit-scrollbar": { height: 6 },
+                "&::-webkit-scrollbar-thumb": {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.3),
+                  borderRadius: 3,
+                },
+              }}
+            >
+              {recentlyAdded.map((item, i) => (
+                <MediaItemCard key={i} item={item} type="recently-added" />
+              ))}
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* On Deck */}
+      {onDeck.length > 0 && (
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+              <History sx={{ color: "warning.main" }} />
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Continue Watching
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 2,
+                overflowX: "auto",
+                pb: 1,
+                "&::-webkit-scrollbar": { height: 6 },
+                "&::-webkit-scrollbar-thumb": {
+                  backgroundColor: alpha(theme.palette.warning.main, 0.3),
+                  borderRadius: 3,
+                },
+              }}
+            >
+              {onDeck.map((item, i) => (
+                <MediaItemCard key={i} item={item} type="on-deck" />
+              ))}
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Alert Timeline */}
+      <Card>
+        <CardActionArea onClick={() => onNavigate?.("open-alerts")}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+              Alert Timeline (Last Hour)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {stats.errorCount || 0} errors, {stats.warningCount || 0} warnings
+            </Typography>
+            <ErrorTimelineChart data={timelineData} />
+          </CardContent>
+        </CardActionArea>
+      </Card>
     </Box>
   );
 };

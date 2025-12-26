@@ -457,7 +457,13 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case "dashboard":
-        return <Dashboard stats={stats} alerts={alerts} />;
+        return (
+          <Dashboard
+            stats={stats}
+            alerts={alerts}
+            onNavigate={handlePageChange}
+          />
+        );
       case "plex-status":
         return <PlexStatus />;
       case "logs":
@@ -476,7 +482,13 @@ const App: React.FC = () => {
       case "settings":
         return <Settings onRefresh={fetchStats} />;
       default:
-        return <Dashboard stats={stats} alerts={alerts} />;
+        return (
+          <Dashboard
+            stats={stats}
+            alerts={alerts}
+            onNavigate={handlePageChange}
+          />
+        );
     }
   };
 

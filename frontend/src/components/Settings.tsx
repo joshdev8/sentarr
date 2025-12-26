@@ -13,112 +13,55 @@ import {
   Alert as MuiAlert,
   Snackbar,
   Chip,
-  alpha,
-  useTheme,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  InputAdornment,
+  IconButton,
+  CircularProgress,
 } from "@mui/material";
 import {
   Save,
   Refresh,
   Email,
   Send,
+  ExpandMore,
+  Visibility,
+  VisibilityOff,
+  CheckCircle,
   Error as ErrorIcon,
 } from "@mui/icons-material";
 
-import { SystemConfig, NotificationChannel } from "../types";
+import { SystemConfig, NotificationsConfig } from "../types";
 import { apiService } from "../services/api";
-
-interface NotificationChannelCardProps {
-  channel: NotificationChannel;
-  onTest: (channelId: string) => void;
-  onToggle: (channelId: string, enabled: boolean) => void;
-}
-
-const NotificationChannelCard: React.FC<NotificationChannelCardProps> = ({
-  channel,
-  onTest,
-  onToggle,
-}) => {
-  const theme = useTheme();
-
-  const channelIcons: Record<string, JSX.Element> = {
-    email: <Email />,
-    discord: <Send />,
-    slack: <Send />,
-    webhook: <Send />,
-  };
-
-  return (
-    <Card>
-      <CardContent>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            mb: 2,
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                color: theme.palette.primary.main,
-              }}
-            >
-              {channelIcons[channel.type]}
-            </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                {channel.name}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {channel.type.toUpperCase()}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Chip
-            label={channel.enabled ? "ENABLED" : "DISABLED"}
-            color={channel.enabled ? "success" : "default"}
-            size="small"
-          />
-        </Box>
-
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={channel.enabled}
-                onChange={(e) => onToggle(channel.id, e.target.checked)}
-                color="primary"
-              />
-            }
-            label="Enabled"
-          />
-
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => onTest(channel.id)}
-            disabled={!channel.enabled}
-          >
-            Test
-          </Button>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-};
 
 interface SettingsProps {
   onRefresh: () => void;
 }
+
+const defaultNotifications: NotificationsConfig = {
+  email: {
+    enabled: false,
+    smtpServer: "",
+    smtpPort: 587,
+    smtpUser: "",
+    smtpPassword: "",
+    fromAddress: "",
+    toAddress: "",
+  },
+  discord: {
+    enabled: false,
+    webhookUrl: "",
+  },
+  slack: {
+    enabled: false,
+    webhookUrl: "",
+  },
+  webhook: {
+    enabled: false,
+    webhookUrl: "",
+  },
+};
 
 const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
   const [config, setConfig] = useState<SystemConfig>({
@@ -127,10 +70,10 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
     errorThreshold: 5,
     timeWindowMinutes: 5,
     alertCooldownMinutes: 15,
-    logPath: "/config/Library/Application Support/Plex Media Server/Logs",
+    logPath: "/logs",
+    notifications: defaultNotifications,
   });
 
-  const [channels, setChannels] = useState<NotificationChannel[]>([]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -141,37 +84,56 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
     severity: "success",
   });
   const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [testingChannel, setTestingChannel] = useState<string | null>(null);
 
   useEffect(() => {
     loadConfig();
-    loadChannels();
   }, []);
 
   const loadConfig = async () => {
     try {
       const data = await apiService.getConfig();
-      setConfig(data);
+      setConfig({
+        ...config,
+        ...data,
+        notifications: {
+          ...defaultNotifications,
+          ...data.notifications,
+        },
+      });
     } catch (error) {
       console.error("Failed to load config:", error);
     }
   };
 
-  const loadChannels = async () => {
-    try {
-      const data = await apiService.getNotificationChannels();
-      setChannels(data);
-    } catch (error) {
-      console.error("Failed to load channels:", error);
-    }
+  const handleConfigChange = (field: keyof SystemConfig, value: unknown) => {
+    setConfig({ ...config, [field]: value });
+    setHasChanges(true);
   };
 
-  const handleConfigChange = (field: keyof SystemConfig, value: any) => {
-    setConfig({ ...config, [field]: value });
+  const handleNotificationChange = (
+    channel: keyof NotificationsConfig,
+    field: string,
+    value: unknown,
+  ) => {
+    setConfig({
+      ...config,
+      notifications: {
+        ...config.notifications,
+        [channel]: {
+          ...config.notifications[channel],
+          [field]: value,
+        },
+      },
+    });
     setHasChanges(true);
   };
 
   const handleSave = async () => {
     try {
+      setSaving(true);
       await apiService.updateConfig(config);
       setSnackbar({
         open: true,
@@ -186,31 +148,16 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
         message: "Failed to save settings",
         severity: "error",
       });
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleChannelToggle = async (channelId: string, enabled: boolean) => {
+  const handleTestChannel = async (channelId: string) => {
     try {
-      await apiService.updateNotificationChannel(channelId, { enabled });
-      setChannels(
-        channels.map((ch) => (ch.id === channelId ? { ...ch, enabled } : ch)),
-      );
-      setSnackbar({
-        open: true,
-        message: `Channel ${enabled ? "enabled" : "disabled"} successfully`,
-        severity: "success",
-      });
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: "Failed to update channel",
-        severity: "error",
-      });
-    }
-  };
-
-  const handleChannelTest = async (channelId: string) => {
-    try {
+      setTestingChannel(channelId);
+      // Save first to ensure latest config is used
+      await apiService.updateConfig(config);
       const result = await apiService.testNotificationChannel(channelId);
       setSnackbar({
         open: true,
@@ -220,9 +167,11 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Test notification failed",
+        message: `Test failed: ${error}`,
         severity: "error",
       });
+    } finally {
+      setTestingChannel(null);
     }
   };
 
@@ -242,7 +191,7 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
             Settings
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Configure monitoring and notification preferences
+            Configure monitoring, alerts, and notifications
           </Typography>
         </Box>
 
@@ -250,19 +199,16 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
           <Button
             variant="outlined"
             startIcon={<Refresh />}
-            onClick={() => {
-              loadConfig();
-              loadChannels();
-            }}
+            onClick={loadConfig}
           >
             Refresh
           </Button>
 
           <Button
             variant="contained"
-            startIcon={<Save />}
+            startIcon={saving ? <CircularProgress size={20} /> : <Save />}
             onClick={handleSave}
-            disabled={!hasChanges}
+            disabled={!hasChanges || saving}
           >
             Save Changes
           </Button>
@@ -296,7 +242,7 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
                 display="block"
                 sx={{ ml: 6 }}
               >
-                Track error-level log entries
+                Track error-level log entries and send alerts
               </Typography>
             </Grid>
 
@@ -336,7 +282,8 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
                 onChange={(e) =>
                   handleConfigChange("errorThreshold", parseInt(e.target.value))
                 }
-                helperText="Number of errors before alerting"
+                helperText="Number of errors before sending an alert"
+                inputProps={{ min: 1, max: 100 }}
               />
             </Grid>
 
@@ -352,7 +299,8 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
                     parseInt(e.target.value),
                   )
                 }
-                helperText="Period to count errors"
+                helperText="Period to count errors within"
+                inputProps={{ min: 1, max: 60 }}
               />
             </Grid>
 
@@ -369,17 +317,7 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
                   )
                 }
                 helperText="Minimum time between similar alerts"
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Plex Log Path"
-                value={config.logPath}
-                onChange={(e) => handleConfigChange("logPath", e.target.value)}
-                helperText="Path to Plex Media Server logs"
-                disabled
+                inputProps={{ min: 1, max: 120 }}
               />
             </Grid>
           </Grid>
@@ -391,40 +329,446 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
         Notification Channels
       </Typography>
 
-      <Grid container spacing={3}>
-        {channels.map((channel) => (
-          <Grid item xs={12} md={6} key={channel.id}>
-            <NotificationChannelCard
-              channel={channel}
-              onTest={handleChannelTest}
-              onToggle={handleChannelToggle}
-            />
-          </Grid>
-        ))}
-      </Grid>
+      {/* Email */}
+      <Accordion sx={{ mb: 2 }}>
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              width: "100%",
+            }}
+          >
+            <Email sx={{ color: "primary.main" }} />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Email Notifications
+            </Typography>
+            <Box sx={{ ml: "auto", mr: 2 }}>
+              <Chip
+                label={
+                  config.notifications.email.enabled ? "ENABLED" : "DISABLED"
+                }
+                color={
+                  config.notifications.email.enabled ? "success" : "default"
+                }
+                size="small"
+              />
+            </Box>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={config.notifications.email.enabled}
+                    onChange={(e) =>
+                      handleNotificationChange(
+                        "email",
+                        "enabled",
+                        e.target.checked,
+                      )
+                    }
+                    color="primary"
+                  />
+                }
+                label="Enable Email Notifications"
+              />
+            </Grid>
 
-      {channels.length === 0 && (
-        <Card>
-          <CardContent>
-            <Box sx={{ textAlign: "center", py: 4 }}>
-              <ErrorIcon
-                sx={{
-                  fontSize: 48,
-                  color: "text.secondary",
-                  mb: 2,
-                  opacity: 0.5,
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="SMTP Server"
+                value={config.notifications.email.smtpServer}
+                onChange={(e) =>
+                  handleNotificationChange(
+                    "email",
+                    "smtpServer",
+                    e.target.value,
+                  )
+                }
+                placeholder="smtp.gmail.com"
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="SMTP Port"
+                type="number"
+                value={config.notifications.email.smtpPort}
+                onChange={(e) =>
+                  handleNotificationChange(
+                    "email",
+                    "smtpPort",
+                    parseInt(e.target.value),
+                  )
+                }
+                placeholder="587"
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="SMTP Username"
+                value={config.notifications.email.smtpUser}
+                onChange={(e) =>
+                  handleNotificationChange("email", "smtpUser", e.target.value)
+                }
+                placeholder="your-email@gmail.com"
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="SMTP Password"
+                type={showPassword ? "text" : "password"}
+                value={config.notifications.email.smtpPassword}
+                onChange={(e) =>
+                  handleNotificationChange(
+                    "email",
+                    "smtpPassword",
+                    e.target.value,
+                  )
+                }
+                placeholder="App password"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
                 }}
               />
-              <Typography variant="h6" gutterBottom>
-                No Notification Channels Configured
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Configure notification channels in your environment settings
-              </Typography>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="From Address"
+                value={config.notifications.email.fromAddress}
+                onChange={(e) =>
+                  handleNotificationChange(
+                    "email",
+                    "fromAddress",
+                    e.target.value,
+                  )
+                }
+                placeholder="sentarr@yourdomain.com"
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="To Address"
+                value={config.notifications.email.toAddress}
+                onChange={(e) =>
+                  handleNotificationChange("email", "toAddress", e.target.value)
+                }
+                placeholder="admin@yourdomain.com"
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Button
+                variant="outlined"
+                onClick={() => handleTestChannel("email")}
+                disabled={
+                  !config.notifications.email.enabled ||
+                  testingChannel === "email"
+                }
+                startIcon={
+                  testingChannel === "email" ? (
+                    <CircularProgress size={20} />
+                  ) : (
+                    <Send />
+                  )
+                }
+              >
+                Send Test Email
+              </Button>
+            </Grid>
+          </Grid>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Discord */}
+      <Accordion sx={{ mb: 2 }}>
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              width: "100%",
+            }}
+          >
+            <Send sx={{ color: "#5865F2" }} />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Discord Webhook
+            </Typography>
+            <Box sx={{ ml: "auto", mr: 2 }}>
+              <Chip
+                label={
+                  config.notifications.discord.enabled ? "ENABLED" : "DISABLED"
+                }
+                color={
+                  config.notifications.discord.enabled ? "success" : "default"
+                }
+                size="small"
+              />
             </Box>
-          </CardContent>
-        </Card>
-      )}
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={config.notifications.discord.enabled}
+                    onChange={(e) =>
+                      handleNotificationChange(
+                        "discord",
+                        "enabled",
+                        e.target.checked,
+                      )
+                    }
+                    color="primary"
+                  />
+                }
+                label="Enable Discord Notifications"
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Discord Webhook URL"
+                value={config.notifications.discord.webhookUrl}
+                onChange={(e) =>
+                  handleNotificationChange(
+                    "discord",
+                    "webhookUrl",
+                    e.target.value,
+                  )
+                }
+                placeholder="https://discord.com/api/webhooks/..."
+                helperText="Create a webhook in your Discord server settings"
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Button
+                variant="outlined"
+                onClick={() => handleTestChannel("discord")}
+                disabled={
+                  !config.notifications.discord.enabled ||
+                  testingChannel === "discord"
+                }
+                startIcon={
+                  testingChannel === "discord" ? (
+                    <CircularProgress size={20} />
+                  ) : (
+                    <Send />
+                  )
+                }
+              >
+                Send Test Message
+              </Button>
+            </Grid>
+          </Grid>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Slack */}
+      <Accordion sx={{ mb: 2 }}>
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              width: "100%",
+            }}
+          >
+            <Send sx={{ color: "#4A154B" }} />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Slack Webhook
+            </Typography>
+            <Box sx={{ ml: "auto", mr: 2 }}>
+              <Chip
+                label={
+                  config.notifications.slack.enabled ? "ENABLED" : "DISABLED"
+                }
+                color={
+                  config.notifications.slack.enabled ? "success" : "default"
+                }
+                size="small"
+              />
+            </Box>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={config.notifications.slack.enabled}
+                    onChange={(e) =>
+                      handleNotificationChange(
+                        "slack",
+                        "enabled",
+                        e.target.checked,
+                      )
+                    }
+                    color="primary"
+                  />
+                }
+                label="Enable Slack Notifications"
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Slack Webhook URL"
+                value={config.notifications.slack.webhookUrl}
+                onChange={(e) =>
+                  handleNotificationChange(
+                    "slack",
+                    "webhookUrl",
+                    e.target.value,
+                  )
+                }
+                placeholder="https://hooks.slack.com/services/..."
+                helperText="Create an incoming webhook in your Slack workspace"
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Button
+                variant="outlined"
+                onClick={() => handleTestChannel("slack")}
+                disabled={
+                  !config.notifications.slack.enabled ||
+                  testingChannel === "slack"
+                }
+                startIcon={
+                  testingChannel === "slack" ? (
+                    <CircularProgress size={20} />
+                  ) : (
+                    <Send />
+                  )
+                }
+              >
+                Send Test Message
+              </Button>
+            </Grid>
+          </Grid>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Custom Webhook */}
+      <Accordion sx={{ mb: 2 }}>
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              width: "100%",
+            }}
+          >
+            <Send sx={{ color: "warning.main" }} />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Custom Webhook
+            </Typography>
+            <Box sx={{ ml: "auto", mr: 2 }}>
+              <Chip
+                label={
+                  config.notifications.webhook.enabled ? "ENABLED" : "DISABLED"
+                }
+                color={
+                  config.notifications.webhook.enabled ? "success" : "default"
+                }
+                size="small"
+              />
+            </Box>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={config.notifications.webhook.enabled}
+                    onChange={(e) =>
+                      handleNotificationChange(
+                        "webhook",
+                        "enabled",
+                        e.target.checked,
+                      )
+                    }
+                    color="primary"
+                  />
+                }
+                label="Enable Custom Webhook"
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Webhook URL"
+                value={config.notifications.webhook.webhookUrl}
+                onChange={(e) =>
+                  handleNotificationChange(
+                    "webhook",
+                    "webhookUrl",
+                    e.target.value,
+                  )
+                }
+                placeholder="https://your-service.com/webhook"
+                helperText="Any HTTP endpoint that accepts POST requests with JSON payload"
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Button
+                variant="outlined"
+                onClick={() => handleTestChannel("webhook")}
+                disabled={
+                  !config.notifications.webhook.enabled ||
+                  testingChannel === "webhook"
+                }
+                startIcon={
+                  testingChannel === "webhook" ? (
+                    <CircularProgress size={20} />
+                  ) : (
+                    <Send />
+                  )
+                }
+              >
+                Send Test Request
+              </Button>
+            </Grid>
+          </Grid>
+        </AccordionDetails>
+      </Accordion>
 
       {/* Snackbar */}
       <Snackbar
@@ -438,6 +782,9 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
           severity={snackbar.severity}
           sx={{ width: "100%" }}
           variant="filled"
+          icon={
+            snackbar.severity === "success" ? <CheckCircle /> : <ErrorIcon />
+          }
         >
           {snackbar.message}
         </MuiAlert>

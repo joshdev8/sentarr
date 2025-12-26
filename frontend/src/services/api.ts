@@ -10,6 +10,8 @@ import {
   LogsResponse,
   SystemMetrics,
   SystemHealth,
+  RecentlyAddedResponse,
+  OnDeckResponse,
 } from "../types";
 
 // In production, use relative URL so nginx proxies to the API
@@ -77,6 +79,16 @@ class ApiService {
     return this.fetchJson<PlexStreamsResponse>("/plex/streams");
   }
 
+  async getRecentlyAdded(limit: number = 10): Promise<RecentlyAddedResponse> {
+    return this.fetchJson<RecentlyAddedResponse>(
+      `/plex/recently-added?limit=${limit}`,
+    );
+  }
+
+  async getOnDeck(limit: number = 10): Promise<OnDeckResponse> {
+    return this.fetchJson<OnDeckResponse>(`/plex/on-deck?limit=${limit}`);
+  }
+
   // ============================================
   // LOGS
   // ============================================
@@ -89,7 +101,6 @@ class ApiService {
     return this.fetchJson<LogsResponse>(`/logs?${params}`);
   }
 
-  // Get SSE stream URL for live logs
   getLogStreamUrl(): string {
     return `${API_BASE_URL}/logs/stream`;
   }
@@ -114,11 +125,16 @@ class ApiService {
     return this.fetchJson<SystemConfig>("/config");
   }
 
-  async updateConfig(config: Partial<SystemConfig>): Promise<SystemConfig> {
-    return this.fetchJson<SystemConfig>("/config", {
-      method: "PUT",
-      body: JSON.stringify(config),
-    });
+  async updateConfig(
+    config: Partial<SystemConfig>,
+  ): Promise<{ success: boolean; config: SystemConfig }> {
+    return this.fetchJson<{ success: boolean; config: SystemConfig }>(
+      "/config",
+      {
+        method: "PUT",
+        body: JSON.stringify(config),
+      },
+    );
   }
 
   // ============================================

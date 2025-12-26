@@ -7,10 +7,9 @@ Provides REST API endpoints for the frontend dashboard
 import os
 import json
 import time
-import subprocess
 import psutil
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 import uuid
@@ -32,6 +31,7 @@ PLEX_URL = os.getenv('PLEX_URL', 'http://localhost:32400')
 PLEX_TOKEN = os.getenv('PLEX_TOKEN', '')
 PLEX_API_ENABLED = os.getenv('PLEX_API_ENABLED', 'false').lower() == 'true'
 LOG_PATH = os.getenv('PLEX_LOG_PATH', '/logs')
+CONFIG_PATH = Path('/config/sentarr_config.json')
 
 # Plex connection
 plex = None
@@ -44,59 +44,78 @@ if PLEX_API_ENABLED and PLEXAPI_AVAILABLE and PLEX_TOKEN:
 
 # In-memory storage
 alerts_storage: List[Dict] = []
-log_buffer: deque = deque(maxlen=500)  # Keep last 500 log lines
+log_buffer: deque = deque(maxlen=500)
 
 # Track server start time
 SERVER_START_TIME = time.time()
 
-config_storage = {
+# Default configuration
+DEFAULT_CONFIG = {
     'monitorErrors': True,
     'monitorWarnings': True,
     'errorThreshold': 5,
     'timeWindowMinutes': 5,
     'alertCooldownMinutes': 15,
-    'logPath': LOG_PATH
+    'logPath': LOG_PATH,
+    'notifications': {
+        'email': {
+            'enabled': os.getenv('EMAIL_ENABLED', 'false').lower() == 'true',
+            'smtpServer': os.getenv('SMTP_SERVER', ''),
+            'smtpPort': int(os.getenv('SMTP_PORT', '587')),
+            'smtpUser': os.getenv('SMTP_USER', ''),
+            'smtpPassword': os.getenv('SMTP_PASSWORD', ''),
+            'fromAddress': os.getenv('EMAIL_FROM', ''),
+            'toAddress': os.getenv('EMAIL_TO', ''),
+        },
+        'discord': {
+            'enabled': os.getenv('DISCORD_ENABLED', 'false').lower() == 'true',
+            'webhookUrl': os.getenv('DISCORD_WEBHOOK_URL', ''),
+        },
+        'slack': {
+            'enabled': os.getenv('SLACK_ENABLED', 'false').lower() == 'true',
+            'webhookUrl': os.getenv('SLACK_WEBHOOK_URL', ''),
+        },
+        'webhook': {
+            'enabled': os.getenv('WEBHOOK_ENABLED', 'false').lower() == 'true',
+            'webhookUrl': os.getenv('CUSTOM_WEBHOOK_URL', ''),
+        },
+    }
 }
 
-notification_channels = [
-    {
-        'id': 'email',
-        'name': 'Email Notifications',
-        'type': 'email',
-        'enabled': os.getenv('EMAIL_ENABLED', 'false').lower() == 'true',
-        'config': {
-            'smtp_server': os.getenv('SMTP_SERVER', ''),
-            'smtp_user': os.getenv('SMTP_USER', ''),
-        }
-    },
-    {
-        'id': 'discord',
-        'name': 'Discord Webhook',
-        'type': 'discord',
-        'enabled': os.getenv('DISCORD_ENABLED', 'false').lower() == 'true',
-        'config': {
-            'webhook_url': os.getenv('DISCORD_WEBHOOK_URL', ''),
-        }
-    },
-    {
-        'id': 'slack',
-        'name': 'Slack Webhook',
-        'type': 'slack',
-        'enabled': os.getenv('SLACK_ENABLED', 'false').lower() == 'true',
-        'config': {
-            'webhook_url': os.getenv('SLACK_WEBHOOK_URL', ''),
-        }
-    },
-    {
-        'id': 'webhook',
-        'name': 'Custom Webhook',
-        'type': 'webhook',
-        'enabled': os.getenv('WEBHOOK_ENABLED', 'false').lower() == 'true',
-        'config': {
-            'webhook_url': os.getenv('CUSTOM_WEBHOOK_URL', ''),
-        }
-    },
-]
+def load_config() -> Dict:
+    """Load configuration from file or return defaults"""
+    if CONFIG_PATH.exists():
+        try:
+            with open(CONFIG_PATH, 'r') as f:
+                saved = json.load(f)
+                # Merge with defaults
+                config = DEFAULT_CONFIG.copy()
+                config.update(saved)
+                return config
+        except Exception as e:
+            print(f"Error loading config: {e}")
+    return DEFAULT_CONFIG.copy()
+
+def save_config(config: Dict) -> bool:
+    """Save configuration to file"""
+    try:
+        CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(CONFIG_PATH, 'w') as f:
+            json.dump(config, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving config: {e}")
+        return False
+
+# Load config on startup
+config_storage = load_config()
+
+
+def get_thumb_url(thumb_path: str) -> str:
+    """Convert Plex thumb path to accessible URL"""
+    if not thumb_path or not PLEX_TOKEN:
+        return ''
+    return f"{PLEX_URL}{thumb_path}?X-Plex-Token={PLEX_TOKEN}"
 
 
 # ============================================
@@ -116,7 +135,6 @@ def get_plex_status():
         })
     
     try:
-        # Get server info
         sessions = plex.sessions()
         libraries = plex.library.sections()
         
@@ -132,7 +150,8 @@ def get_plex_status():
                 'title': lib.title,
                 'type': lib.type,
                 'count': lib.totalSize if hasattr(lib, 'totalSize') else 0,
-                'scanned': not lib.refreshing if hasattr(lib, 'refreshing') else True
+                'scanned': not lib.refreshing if hasattr(lib, 'refreshing') else True,
+                'key': lib.key,
             }
             library_info.append(lib_data)
             
@@ -142,6 +161,14 @@ def get_plex_status():
                 total_shows += lib_data['count']
             elif lib.type == 'artist':
                 total_music += lib_data['count']
+        
+        # Get bandwidth info
+        bandwidth = 0
+        for session in sessions:
+            if hasattr(session, 'media') and session.media:
+                for media in session.media:
+                    if hasattr(media, 'bitrate') and media.bitrate:
+                        bandwidth += media.bitrate
         
         return jsonify({
             'connected': True,
@@ -155,6 +182,7 @@ def get_plex_status():
             'totalShows': total_shows,
             'totalMusic': total_music,
             'transcodeSessions': len([s for s in sessions if s.transcodeSessions]),
+            'bandwidth': bandwidth,
             'updatedAt': datetime.utcnow().isoformat() + 'Z'
         })
     except Exception as e:
@@ -166,7 +194,7 @@ def get_plex_status():
 
 @app.route('/api/plex/streams', methods=['GET'])
 def get_active_streams():
-    """Get currently active Plex streams"""
+    """Get currently active Plex streams with rich metadata"""
     if not plex:
         return jsonify({
             'streams': [],
@@ -176,12 +204,12 @@ def get_active_streams():
     try:
         sessions = plex.sessions()
         streams = []
+        total_bandwidth = 0
         
         for session in sessions:
-            # Get user info
             user = session.usernames[0] if session.usernames else 'Unknown'
             
-            # Get player info
+            # Player info
             player = session.player
             player_info = {
                 'device': player.device if hasattr(player, 'device') else 'Unknown',
@@ -189,9 +217,10 @@ def get_active_streams():
                 'product': player.product if hasattr(player, 'product') else 'Unknown',
                 'state': player.state if hasattr(player, 'state') else 'Unknown',
                 'address': player.address if hasattr(player, 'address') else 'Unknown',
+                'local': player.local if hasattr(player, 'local') else False,
             }
             
-            # Get transcoding info
+            # Transcoding info
             is_transcoding = bool(session.transcodeSessions)
             transcode_info = None
             if is_transcoding and session.transcodeSessions:
@@ -201,24 +230,66 @@ def get_active_streams():
                     'audioDecision': tc.audioDecision if hasattr(tc, 'audioDecision') else 'unknown',
                     'throttled': tc.throttled if hasattr(tc, 'throttled') else False,
                     'speed': tc.speed if hasattr(tc, 'speed') else 0,
+                    'progress': tc.progress if hasattr(tc, 'progress') else 0,
+                    'transcodeHwRequested': tc.transcodeHwRequested if hasattr(tc, 'transcodeHwRequested') else False,
                 }
             
-            # Get media info
+            # Media quality info
+            media_info = None
+            bandwidth = 0
+            if hasattr(session, 'media') and session.media:
+                media = session.media[0]
+                bandwidth = media.bitrate if hasattr(media, 'bitrate') and media.bitrate else 0
+                total_bandwidth += bandwidth
+                
+                # Get video/audio stream details
+                video_resolution = media.videoResolution if hasattr(media, 'videoResolution') else None
+                video_codec = media.videoCodec if hasattr(media, 'videoCodec') else None
+                audio_codec = media.audioCodec if hasattr(media, 'audioCodec') else None
+                audio_channels = media.audioChannels if hasattr(media, 'audioChannels') else None
+                container = media.container if hasattr(media, 'container') else None
+                
+                media_info = {
+                    'videoResolution': video_resolution,
+                    'videoCodec': video_codec,
+                    'audioCodec': audio_codec,
+                    'audioChannels': audio_channels,
+                    'container': container,
+                    'bitrate': bandwidth,
+                }
+            
+            # Episode/Season info for TV
+            episode_info = None
+            if session.type == 'episode':
+                episode_info = {
+                    'seasonNumber': session.parentIndex if hasattr(session, 'parentIndex') else None,
+                    'episodeNumber': session.index if hasattr(session, 'index') else None,
+                }
+            
             stream_data = {
                 'id': session.sessionKey,
                 'user': user,
+                'userThumb': get_thumb_url(session.user.thumb) if hasattr(session, 'user') and hasattr(session.user, 'thumb') else None,
                 'title': session.title,
                 'type': session.type,
                 'year': session.year if hasattr(session, 'year') else None,
-                'thumb': session.thumb if hasattr(session, 'thumb') else None,
+                'thumb': get_thumb_url(session.thumb) if hasattr(session, 'thumb') else None,
+                'art': get_thumb_url(session.art) if hasattr(session, 'art') else None,
                 'grandparentTitle': session.grandparentTitle if hasattr(session, 'grandparentTitle') else None,
+                'grandparentThumb': get_thumb_url(session.grandparentThumb) if hasattr(session, 'grandparentThumb') else None,
                 'parentTitle': session.parentTitle if hasattr(session, 'parentTitle') else None,
+                'summary': session.summary[:200] + '...' if hasattr(session, 'summary') and session.summary and len(session.summary) > 200 else (session.summary if hasattr(session, 'summary') else None),
+                'rating': session.rating if hasattr(session, 'rating') else None,
+                'contentRating': session.contentRating if hasattr(session, 'contentRating') else None,
                 'duration': session.duration if hasattr(session, 'duration') else 0,
                 'viewOffset': session.viewOffset if hasattr(session, 'viewOffset') else 0,
                 'progress': round((session.viewOffset / session.duration * 100) if session.duration else 0, 1),
                 'player': player_info,
                 'transcoding': is_transcoding,
                 'transcodeInfo': transcode_info,
+                'mediaInfo': media_info,
+                'episodeInfo': episode_info,
+                'bandwidth': bandwidth,
             }
             
             streams.append(stream_data)
@@ -226,6 +297,9 @@ def get_active_streams():
         return jsonify({
             'streams': streams,
             'count': len(streams),
+            'totalBandwidth': total_bandwidth,
+            'transcodingCount': len([s for s in streams if s['transcoding']]),
+            'directPlayCount': len([s for s in streams if not s['transcoding']]),
             'updatedAt': datetime.utcnow().isoformat() + 'Z'
         })
     except Exception as e:
@@ -233,6 +307,75 @@ def get_active_streams():
             'streams': [],
             'error': str(e)
         })
+
+
+@app.route('/api/plex/recently-added', methods=['GET'])
+def get_recently_added():
+    """Get recently added items"""
+    if not plex:
+        return jsonify({'items': [], 'error': 'Plex API not configured'})
+    
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        items = []
+        
+        recently_added = plex.library.recentlyAdded()[:limit]
+        
+        for item in recently_added:
+            items.append({
+                'title': item.title,
+                'type': item.type,
+                'year': item.year if hasattr(item, 'year') else None,
+                'thumb': get_thumb_url(item.thumb) if hasattr(item, 'thumb') else None,
+                'addedAt': item.addedAt.isoformat() if hasattr(item, 'addedAt') and item.addedAt else None,
+                'grandparentTitle': item.grandparentTitle if hasattr(item, 'grandparentTitle') else None,
+                'parentTitle': item.parentTitle if hasattr(item, 'parentTitle') else None,
+                'summary': item.summary[:150] + '...' if hasattr(item, 'summary') and item.summary and len(item.summary) > 150 else (item.summary if hasattr(item, 'summary') else None),
+                'rating': item.rating if hasattr(item, 'rating') else None,
+            })
+        
+        return jsonify({
+            'items': items,
+            'count': len(items),
+            'updatedAt': datetime.utcnow().isoformat() + 'Z'
+        })
+    except Exception as e:
+        return jsonify({'items': [], 'error': str(e)})
+
+
+@app.route('/api/plex/on-deck', methods=['GET'])
+def get_on_deck():
+    """Get on-deck items (continue watching)"""
+    if not plex:
+        return jsonify({'items': [], 'error': 'Plex API not configured'})
+    
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        items = []
+        
+        on_deck = plex.library.onDeck()[:limit]
+        
+        for item in on_deck:
+            items.append({
+                'title': item.title,
+                'type': item.type,
+                'year': item.year if hasattr(item, 'year') else None,
+                'thumb': get_thumb_url(item.thumb) if hasattr(item, 'thumb') else None,
+                'grandparentTitle': item.grandparentTitle if hasattr(item, 'grandparentTitle') else None,
+                'grandparentThumb': get_thumb_url(item.grandparentThumb) if hasattr(item, 'grandparentThumb') else None,
+                'parentTitle': item.parentTitle if hasattr(item, 'parentTitle') else None,
+                'duration': item.duration if hasattr(item, 'duration') else 0,
+                'viewOffset': item.viewOffset if hasattr(item, 'viewOffset') else 0,
+                'progress': round((item.viewOffset / item.duration * 100) if item.duration else 0, 1),
+            })
+        
+        return jsonify({
+            'items': items,
+            'count': len(items),
+            'updatedAt': datetime.utcnow().isoformat() + 'Z'
+        })
+    except Exception as e:
+        return jsonify({'items': [], 'error': str(e)})
 
 
 # ============================================
@@ -245,11 +388,7 @@ def read_recent_logs(num_lines: int = 100) -> List[Dict]:
     log_file = Path(LOG_PATH) / "Plex Media Server.log"
     
     if not log_file.exists():
-        # Try alternative log locations
-        alt_paths = [
-            Path(LOG_PATH) / "Plex Media Server.log",
-            Path("/logs/Plex Media Server.log"),
-        ]
+        alt_paths = [Path("/logs/Plex Media Server.log")]
         for alt in alt_paths:
             if alt.exists():
                 log_file = alt
@@ -264,13 +403,10 @@ def read_recent_logs(num_lines: int = 100) -> List[Dict]:
         }]
     
     try:
-        # Read last N lines efficiently
         with open(log_file, 'rb') as f:
-            # Go to end of file
             f.seek(0, 2)
             file_size = f.tell()
             
-            # Read in chunks from the end
             chunk_size = 8192
             lines = []
             remaining = file_size
@@ -280,19 +416,15 @@ def read_recent_logs(num_lines: int = 100) -> List[Dict]:
                 f.seek(chunk_start)
                 chunk = f.read(remaining - chunk_start)
                 remaining = chunk_start
-                
                 chunk_lines = chunk.decode('utf-8', errors='ignore').splitlines()
                 lines = chunk_lines + lines
             
-            # Get last N lines
             lines = lines[-num_lines:]
         
-        # Parse log lines
         for line in lines:
             if not line.strip():
                 continue
             
-            # Determine log level
             level = 'info'
             if 'ERROR' in line.upper():
                 level = 'error'
@@ -327,7 +459,6 @@ def get_logs():
     
     logs = read_recent_logs(num_lines)
     
-    # Filter by level if specified
     if level_filter and level_filter != 'all':
         logs = [l for l in logs if l['level'] == level_filter]
     
@@ -351,7 +482,6 @@ def stream_logs():
         
         try:
             with open(log_file, 'r') as f:
-                # Go to end of file
                 f.seek(0, 2)
                 
                 while True:
@@ -386,17 +516,10 @@ def stream_logs():
 def get_system_metrics():
     """Get system metrics (CPU, memory, etc.)"""
     try:
-        # CPU usage
         cpu_percent = psutil.cpu_percent(interval=0.1)
         cpu_count = psutil.cpu_count()
-        
-        # Memory usage
         memory = psutil.virtual_memory()
-        
-        # Disk usage (for root partition)
         disk = psutil.disk_usage('/')
-        
-        # Uptime
         uptime_seconds = int(time.time() - SERVER_START_TIME)
         
         return jsonify({
@@ -421,9 +544,7 @@ def get_system_metrics():
             'updatedAt': datetime.utcnow().isoformat() + 'Z'
         })
     except Exception as e:
-        return jsonify({
-            'error': str(e)
-        })
+        return jsonify({'error': str(e)})
 
 
 def format_uptime(seconds: int) -> str:
@@ -451,9 +572,7 @@ def format_uptime(seconds: int) -> str:
 def get_alerts():
     """Get all alerts with statistics"""
     open_alerts = [a for a in alerts_storage if a['status'] == 'open']
-    closed_alerts = [a for a in alerts_storage if a['status'] == 'closed']
     
-    # Calculate stats
     error_count = len([a for a in open_alerts if a['severity'] in ['error', 'critical']])
     warning_count = len([a for a in open_alerts if a['severity'] == 'warning'])
     
@@ -524,7 +643,6 @@ def get_stats():
     error_count = len([a for a in open_alerts if a['severity'] in ['error', 'critical']])
     warning_count = len([a for a in open_alerts if a['severity'] == 'warning'])
     
-    # Add Plex info if available
     plex_info = {}
     if plex:
         try:
@@ -551,26 +669,53 @@ def get_stats():
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
-    """Get system configuration"""
+    """Get full system configuration"""
     return jsonify(config_storage)
 
 
 @app.route('/api/config', methods=['PUT'])
 def update_config():
-    """Update system configuration"""
+    """Update and persist system configuration"""
+    global config_storage
     data = request.json or {}
-    config_storage.update(data)
-    return jsonify(config_storage)
+    
+    # Deep merge the config
+    def deep_merge(base, update):
+        for key, value in update.items():
+            if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+                deep_merge(base[key], value)
+            else:
+                base[key] = value
+    
+    deep_merge(config_storage, data)
+    
+    # Save to file
+    if save_config(config_storage):
+        return jsonify({'success': True, 'config': config_storage})
+    else:
+        return jsonify({'success': False, 'error': 'Failed to save config', 'config': config_storage})
 
 
 # ============================================
-# NOTIFICATION CHANNELS
+# NOTIFICATION CHANNELS (for backwards compat)
 # ============================================
 
 @app.route('/api/notifications/channels', methods=['GET'])
 def get_notification_channels():
-    """Get all notification channels"""
-    return jsonify(notification_channels)
+    """Get notification channels from config"""
+    notifications = config_storage.get('notifications', {})
+    channels = []
+    
+    for channel_id, channel_config in notifications.items():
+        channels.append({
+            'id': channel_id,
+            'name': channel_id.title() + ' Notifications',
+            'type': channel_id,
+            'enabled': channel_config.get('enabled', False),
+            'config': channel_config,
+        })
+    
+    return jsonify(channels)
 
 
 @app.route('/api/notifications/channels/<channel_id>', methods=['PUT'])
@@ -578,31 +723,106 @@ def update_notification_channel(channel_id: str):
     """Update a notification channel"""
     data = request.json or {}
     
-    for channel in notification_channels:
-        if channel['id'] == channel_id:
-            channel.update(data)
-            return jsonify(channel)
+    if 'notifications' not in config_storage:
+        config_storage['notifications'] = {}
     
-    return jsonify({'error': 'Channel not found'}), 404
+    if channel_id not in config_storage['notifications']:
+        config_storage['notifications'][channel_id] = {}
+    
+    # Update the channel config
+    if 'enabled' in data:
+        config_storage['notifications'][channel_id]['enabled'] = data['enabled']
+    if 'config' in data:
+        config_storage['notifications'][channel_id].update(data['config'])
+    
+    save_config(config_storage)
+    
+    return jsonify({
+        'id': channel_id,
+        'enabled': config_storage['notifications'][channel_id].get('enabled', False),
+        'config': config_storage['notifications'][channel_id],
+    })
 
 
 @app.route('/api/notifications/channels/<channel_id>/test', methods=['POST'])
 def test_notification_channel(channel_id: str):
-    """Test a notification channel"""
-    for channel in notification_channels:
-        if channel['id'] == channel_id:
-            if not channel['enabled']:
-                return jsonify({
-                    'success': False,
-                    'message': 'Channel is disabled'
-                })
-            
-            return jsonify({
-                'success': True,
-                'message': f'Test notification sent successfully to {channel["name"]}'
-            })
+    """Test a notification channel by sending a test message"""
+    notifications = config_storage.get('notifications', {})
+    channel = notifications.get(channel_id, {})
     
-    return jsonify({'error': 'Channel not found'}), 404
+    if not channel.get('enabled'):
+        return jsonify({'success': False, 'message': 'Channel is disabled'})
+    
+    # Actually test the notification
+    try:
+        if channel_id == 'email':
+            # Test email
+            import smtplib
+            from email.mime.text import MIMEText
+            
+            msg = MIMEText('This is a test notification from Sentarr!')
+            msg['Subject'] = '[Sentarr Test] Notification Test'
+            msg['From'] = channel.get('fromAddress', channel.get('smtpUser', ''))
+            msg['To'] = channel.get('toAddress', '')
+            
+            with smtplib.SMTP(channel.get('smtpServer', ''), channel.get('smtpPort', 587)) as server:
+                server.starttls()
+                server.login(channel.get('smtpUser', ''), channel.get('smtpPassword', ''))
+                server.send_message(msg)
+            
+            return jsonify({'success': True, 'message': 'Test email sent successfully!'})
+        
+        elif channel_id == 'discord':
+            import requests
+            webhook_url = channel.get('webhookUrl', '')
+            if not webhook_url:
+                return jsonify({'success': False, 'message': 'No webhook URL configured'})
+            
+            payload = {
+                'embeds': [{
+                    'title': '🧪 Sentarr Test',
+                    'description': 'This is a test notification from Sentarr!',
+                    'color': 0x00e5ff,
+                }]
+            }
+            response = requests.post(webhook_url, json=payload, timeout=10)
+            response.raise_for_status()
+            return jsonify({'success': True, 'message': 'Test Discord message sent!'})
+        
+        elif channel_id == 'slack':
+            import requests
+            webhook_url = channel.get('webhookUrl', '')
+            if not webhook_url:
+                return jsonify({'success': False, 'message': 'No webhook URL configured'})
+            
+            payload = {
+                'text': '🧪 *Sentarr Test*\nThis is a test notification from Sentarr!'
+            }
+            response = requests.post(webhook_url, json=payload, timeout=10)
+            response.raise_for_status()
+            return jsonify({'success': True, 'message': 'Test Slack message sent!'})
+        
+        elif channel_id == 'webhook':
+            import requests
+            webhook_url = channel.get('webhookUrl', '')
+            if not webhook_url:
+                return jsonify({'success': False, 'message': 'No webhook URL configured'})
+            
+            payload = {
+                'type': 'test',
+                'title': 'Sentarr Test',
+                'message': 'This is a test notification from Sentarr!',
+                'timestamp': datetime.utcnow().isoformat() + 'Z',
+            }
+            response = requests.post(webhook_url, json=payload, timeout=10)
+            response.raise_for_status()
+            return jsonify({'success': True, 'message': 'Test webhook sent!'})
+        
+        else:
+            return jsonify({'success': False, 'message': f'Unknown channel: {channel_id}'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Test failed: {str(e)}'})
 
 
 # ============================================
@@ -640,6 +860,7 @@ Sentarr API Server Starting...
 Listening on {host}:{port}
 Plex API: {'Enabled' if plex else 'Disabled'}
 Log Path: {LOG_PATH}
+Config Path: {CONFIG_PATH}
 """)
     
     app.run(host=host, port=port, debug=False)

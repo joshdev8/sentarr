@@ -16,7 +16,7 @@ export interface AlertDetails {
   Count?: number;
   "Time Window"?: string;
   "Latest Error"?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Alert {
@@ -61,8 +61,30 @@ export interface NotificationChannel {
   type: "email" | "discord" | "slack" | "webhook";
   enabled: boolean;
   config: {
-    [key: string]: any;
+    [key: string]: unknown;
   };
+}
+
+export interface EmailConfig {
+  enabled: boolean;
+  smtpServer: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPassword: string;
+  fromAddress: string;
+  toAddress: string;
+}
+
+export interface WebhookConfig {
+  enabled: boolean;
+  webhookUrl: string;
+}
+
+export interface NotificationsConfig {
+  email: EmailConfig;
+  discord: WebhookConfig;
+  slack: WebhookConfig;
+  webhook: WebhookConfig;
 }
 
 export interface SystemConfig {
@@ -72,6 +94,7 @@ export interface SystemConfig {
   timeWindowMinutes: number;
   alertCooldownMinutes: number;
   logPath: string;
+  notifications: NotificationsConfig;
 }
 
 export interface AlertsResponse {
@@ -93,6 +116,7 @@ export interface PlexLibrary {
   type: string;
   count: number;
   scanned: boolean;
+  key: string;
 }
 
 export interface PlexStatus {
@@ -107,6 +131,7 @@ export interface PlexStatus {
   totalShows?: number;
   totalMusic?: number;
   transcodeSessions?: number;
+  bandwidth?: number;
   error?: string;
   updatedAt?: string;
 }
@@ -117,6 +142,7 @@ export interface PlayerInfo {
   product: string;
   state: string;
   address: string;
+  local?: boolean;
 }
 
 export interface TranscodeInfo {
@@ -124,29 +150,85 @@ export interface TranscodeInfo {
   audioDecision: string;
   throttled: boolean;
   speed: number;
+  progress?: number;
+  transcodeHwRequested?: boolean;
+}
+
+export interface MediaInfo {
+  videoResolution?: string;
+  videoCodec?: string;
+  audioCodec?: string;
+  audioChannels?: number;
+  container?: string;
+  bitrate?: number;
+}
+
+export interface EpisodeInfo {
+  seasonNumber?: number;
+  episodeNumber?: number;
 }
 
 export interface PlexStream {
   id: string;
   user: string;
+  userThumb?: string;
   title: string;
   type: string;
   year?: number;
   thumb?: string;
+  art?: string;
   grandparentTitle?: string;
+  grandparentThumb?: string;
   parentTitle?: string;
+  summary?: string;
+  rating?: number;
+  contentRating?: string;
   duration: number;
   viewOffset: number;
   progress: number;
   player: PlayerInfo;
   transcoding: boolean;
   transcodeInfo?: TranscodeInfo;
+  mediaInfo?: MediaInfo;
+  episodeInfo?: EpisodeInfo;
+  bandwidth?: number;
 }
 
 export interface PlexStreamsResponse {
   streams: PlexStream[];
   count: number;
+  totalBandwidth?: number;
+  transcodingCount?: number;
+  directPlayCount?: number;
   error?: string;
+  updatedAt?: string;
+}
+
+export interface PlexMediaItem {
+  title: string;
+  type: string;
+  year?: number;
+  thumb?: string;
+  addedAt?: string;
+  grandparentTitle?: string;
+  grandparentThumb?: string;
+  parentTitle?: string;
+  summary?: string;
+  rating?: number;
+  duration?: number;
+  viewOffset?: number;
+  progress?: number;
+}
+
+export interface RecentlyAddedResponse {
+  items: PlexMediaItem[];
+  count: number;
+  updatedAt?: string;
+}
+
+export interface OnDeckResponse {
+  items: PlexMediaItem[];
+  count: number;
   updatedAt?: string;
 }
 
