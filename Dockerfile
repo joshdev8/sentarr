@@ -26,8 +26,8 @@ RUN pip install --no-cache-dir flask flask-cors requests plexapi
 COPY app/monitor.py /app/monitor.py
 COPY api/server.py /app/api.py
 
-# Copy built frontend
-COPY --from=frontend-builder /app/frontend/build /app/frontend
+# Copy built frontend (Vite outputs to dist/)
+COPY --from=frontend-builder /app/frontend/dist /app/frontend
 
 # Copy nginx config
 COPY docker/nginx.conf /etc/nginx/sites-available/default

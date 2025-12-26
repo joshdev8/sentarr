@@ -19,8 +19,6 @@ import {
   Speed,
 } from '@mui/icons-material';
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   XAxis,
@@ -45,8 +43,6 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, subtitle, trend }) => {
-  const theme = useTheme();
-  
   return (
     <Card
       sx={{
