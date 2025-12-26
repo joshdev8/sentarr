@@ -512,6 +512,75 @@ def stream_logs():
 # SYSTEM METRICS ENDPOINTS
 # ============================================
 
+# Historical metrics storage for charts
+metrics_history = {
+    'cpu': deque(maxlen=60),  # Last 60 data points (5 min at 5s intervals)
+    'memory': deque(maxlen=60),
+    'network': deque(maxlen=60),
+    'disk_io': deque(maxlen=60),
+}
+last_network_io = None
+last_disk_io = None
+last_io_time = None
+
+
+def collect_metrics_snapshot():
+    """Collect a snapshot of current metrics for history"""
+    global last_network_io, last_disk_io, last_io_time
+    
+    timestamp = datetime.utcnow().isoformat() + 'Z'
+    
+    # CPU
+    cpu_percent = psutil.cpu_percent(interval=0.1)
+    metrics_history['cpu'].append({
+        'time': timestamp,
+        'value': cpu_percent
+    })
+    
+    # Memory
+    memory = psutil.virtual_memory()
+    metrics_history['memory'].append({
+        'time': timestamp,
+        'value': memory.percent
+    })
+    
+    # Network I/O (calculate rates)
+    current_net = psutil.net_io_counters()
+    current_time = time.time()
+    
+    if last_network_io and last_io_time:
+        time_diff = current_time - last_io_time
+        if time_diff > 0:
+            bytes_sent_rate = (current_net.bytes_sent - last_network_io.bytes_sent) / time_diff
+            bytes_recv_rate = (current_net.bytes_recv - last_network_io.bytes_recv) / time_diff
+            metrics_history['network'].append({
+                'time': timestamp,
+                'sent': bytes_sent_rate,
+                'recv': bytes_recv_rate
+            })
+    
+    last_network_io = current_net
+    
+    # Disk I/O
+    try:
+        current_disk_io = psutil.disk_io_counters()
+        if last_disk_io and last_io_time:
+            time_diff = current_time - last_io_time
+            if time_diff > 0:
+                read_rate = (current_disk_io.read_bytes - last_disk_io.read_bytes) / time_diff
+                write_rate = (current_disk_io.write_bytes - last_disk_io.write_bytes) / time_diff
+                metrics_history['disk_io'].append({
+                    'time': timestamp,
+                    'read': read_rate,
+                    'write': write_rate
+                })
+        last_disk_io = current_disk_io
+    except:
+        pass
+    
+    last_io_time = current_time
+
+
 @app.route('/api/system/metrics', methods=['GET'])
 def get_system_metrics():
     """Get system metrics (CPU, memory, etc.)"""
@@ -545,6 +614,194 @@ def get_system_metrics():
         })
     except Exception as e:
         return jsonify({'error': str(e)})
+
+
+@app.route('/api/host/metrics', methods=['GET'])
+def get_host_metrics():
+    """Get comprehensive host metrics for detailed monitoring"""
+    try:
+        # Collect snapshot for history
+        collect_metrics_snapshot()
+        
+        # CPU detailed info
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        cpu_per_core = psutil.cpu_percent(interval=0.1, percpu=True)
+        cpu_count_logical = psutil.cpu_count()
+        cpu_count_physical = psutil.cpu_count(logical=False)
+        cpu_freq = psutil.cpu_freq()
+        load_avg = psutil.getloadavg() if hasattr(psutil, 'getloadavg') else (0, 0, 0)
+        
+        # Memory detailed info
+        memory = psutil.virtual_memory()
+        swap = psutil.swap_memory()
+        
+        # All disk partitions
+        disks = []
+        partitions = psutil.disk_partitions(all=False)
+        for partition in partitions:
+            try:
+                usage = psutil.disk_usage(partition.mountpoint)
+                disks.append({
+                    'device': partition.device,
+                    'mountpoint': partition.mountpoint,
+                    'fstype': partition.fstype,
+                    'total': usage.total,
+                    'used': usage.used,
+                    'free': usage.free,
+                    'percent': usage.percent,
+                })
+            except (PermissionError, OSError):
+                continue
+        
+        # Network interfaces
+        network_interfaces = []
+        net_if_addrs = psutil.net_if_addrs()
+        net_if_stats = psutil.net_if_stats()
+        net_io = psutil.net_io_counters(pernic=True)
+        
+        for iface, addrs in net_if_addrs.items():
+            if iface.startswith('lo') or iface.startswith('veth') or iface.startswith('docker'):
+                continue  # Skip loopback and docker interfaces
+            
+            stats = net_if_stats.get(iface, None)
+            io = net_io.get(iface, None)
+            
+            ip_addr = None
+            for addr in addrs:
+                if addr.family.name == 'AF_INET':
+                    ip_addr = addr.address
+                    break
+            
+            if ip_addr:
+                network_interfaces.append({
+                    'name': iface,
+                    'ip': ip_addr,
+                    'isUp': stats.isup if stats else False,
+                    'speed': stats.speed if stats else 0,
+                    'bytesSent': io.bytes_sent if io else 0,
+                    'bytesRecv': io.bytes_recv if io else 0,
+                    'packetsSent': io.packets_sent if io else 0,
+                    'packetsRecv': io.packets_recv if io else 0,
+                })
+        
+        # Total network I/O
+        total_net = psutil.net_io_counters()
+        
+        # Disk I/O
+        disk_io = None
+        try:
+            dio = psutil.disk_io_counters()
+            disk_io = {
+                'readBytes': dio.read_bytes,
+                'writeBytes': dio.write_bytes,
+                'readCount': dio.read_count,
+                'writeCount': dio.write_count,
+            }
+        except:
+            pass
+        
+        # Top processes by CPU and memory
+        processes = []
+        for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent', 'status']):
+            try:
+                pinfo = proc.info
+                if pinfo['cpu_percent'] > 0 or pinfo['memory_percent'] > 0.1:
+                    processes.append({
+                        'pid': pinfo['pid'],
+                        'name': pinfo['name'],
+                        'cpu': round(pinfo['cpu_percent'], 1),
+                        'memory': round(pinfo['memory_percent'], 1),
+                        'status': pinfo['status'],
+                    })
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        
+        # Sort by CPU usage and get top 10
+        processes.sort(key=lambda x: x['cpu'], reverse=True)
+        top_processes = processes[:10]
+        
+        # Temperature sensors (if available)
+        temperatures = []
+        try:
+            temps = psutil.sensors_temperatures()
+            for name, entries in temps.items():
+                for entry in entries:
+                    temperatures.append({
+                        'name': f"{name}: {entry.label or 'temp'}",
+                        'current': entry.current,
+                        'high': entry.high,
+                        'critical': entry.critical,
+                    })
+        except (AttributeError, RuntimeError):
+            pass
+        
+        # System boot time
+        boot_time = psutil.boot_time()
+        system_uptime = int(time.time() - boot_time)
+        
+        return jsonify({
+            'cpu': {
+                'percent': cpu_percent,
+                'perCore': cpu_per_core,
+                'logicalCores': cpu_count_logical,
+                'physicalCores': cpu_count_physical,
+                'frequency': {
+                    'current': cpu_freq.current if cpu_freq else 0,
+                    'min': cpu_freq.min if cpu_freq else 0,
+                    'max': cpu_freq.max if cpu_freq else 0,
+                } if cpu_freq else None,
+                'loadAverage': {
+                    '1min': round(load_avg[0], 2),
+                    '5min': round(load_avg[1], 2),
+                    '15min': round(load_avg[2], 2),
+                },
+            },
+            'memory': {
+                'total': memory.total,
+                'available': memory.available,
+                'used': memory.used,
+                'free': memory.free,
+                'percent': memory.percent,
+                'cached': memory.cached if hasattr(memory, 'cached') else 0,
+                'buffers': memory.buffers if hasattr(memory, 'buffers') else 0,
+            },
+            'swap': {
+                'total': swap.total,
+                'used': swap.used,
+                'free': swap.free,
+                'percent': swap.percent,
+            },
+            'disks': disks,
+            'diskIO': disk_io,
+            'network': {
+                'interfaces': network_interfaces,
+                'total': {
+                    'bytesSent': total_net.bytes_sent,
+                    'bytesRecv': total_net.bytes_recv,
+                    'packetsSent': total_net.packets_sent,
+                    'packetsRecv': total_net.packets_recv,
+                },
+            },
+            'processes': top_processes,
+            'temperatures': temperatures,
+            'uptime': {
+                'system': system_uptime,
+                'systemFormatted': format_uptime(system_uptime),
+                'app': int(time.time() - SERVER_START_TIME),
+                'appFormatted': format_uptime(int(time.time() - SERVER_START_TIME)),
+                'bootTime': datetime.fromtimestamp(boot_time).isoformat() + 'Z',
+            },
+            'history': {
+                'cpu': list(metrics_history['cpu']),
+                'memory': list(metrics_history['memory']),
+                'network': list(metrics_history['network']),
+                'diskIO': list(metrics_history['disk_io']),
+            },
+            'updatedAt': datetime.utcnow().isoformat() + 'Z'
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()})
 
 
 def format_uptime(seconds: int) -> str:

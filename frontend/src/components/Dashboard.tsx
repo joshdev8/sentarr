@@ -89,36 +89,57 @@ const StatCard: React.FC<StatCardProps> = ({
         transition: "transform 0.2s, box-shadow 0.2s",
         "&:hover": onClick
           ? {
-              transform: "translateY(-4px)",
-              boxShadow: `0 8px 24px ${alpha(color, 0.3)}`,
-            }
+            transform: "translateY(-4px)",
+            boxShadow: `0 8px 24px ${alpha(color, 0.3)}`,
+          }
           : {},
       }}
     >
-      <CardContent>
-        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+      <CardContent
+        sx={{
+          p: { xs: 1.5, sm: 2 },
+          "&:last-child": { pb: { xs: 1.5, sm: 2 } },
+        }}
+      >
+        <Box
+          sx={{ display: "flex", alignItems: "center", mb: { xs: 1, sm: 2 } }}
+        >
           <Box
             sx={{
-              width: 48,
-              height: 48,
+              width: { xs: 36, sm: 48 },
+              height: { xs: 36, sm: 48 },
               borderRadius: 2,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               background: alpha(color, 0.1),
-              mr: 2,
+              mr: { xs: 1, sm: 2 },
+              flexShrink: 0,
             }}
           >
-            <Icon sx={{ fontSize: 28, color }} />
+            <Icon sx={{ fontSize: { xs: 20, sm: 28 }, color }} />
           </Box>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mb: 0.5, fontSize: { xs: "0.7rem", sm: "0.875rem" } }}
+              noWrap
+            >
               {title}
             </Typography>
             {loading ? (
               <Skeleton width={60} height={40} />
             ) : (
-              <Typography variant="h3" sx={{ fontWeight: 700, color }}>
+              <Typography
+                variant="h3"
+                sx={{
+                  fontWeight: 700,
+                  color,
+                  fontSize: { xs: "1.5rem", sm: "2rem", md: "2.5rem" },
+                }}
+                noWrap
+              >
                 {value}
               </Typography>
             )}
@@ -181,8 +202,8 @@ const ActiveStreamCard: React.FC<ActiveStreamCardProps> = ({
     <Paper
       onClick={onClick}
       sx={{
-        p: 2,
-        mb: 2,
+        p: { xs: 1.5, sm: 2 },
+        mb: { xs: 1.5, sm: 2 },
         background: alpha(theme.palette.success.main, 0.05),
         border: 1,
         borderColor: alpha(theme.palette.success.main, 0.2),
@@ -192,7 +213,7 @@ const ActiveStreamCard: React.FC<ActiveStreamCardProps> = ({
         "&:hover": onClick ? { transform: "translateX(4px)" } : {},
       }}
     >
-      <Box sx={{ display: "flex", gap: 2 }}>
+      <Box sx={{ display: "flex", gap: { xs: 1.5, sm: 2 } }}>
         {/* Poster/Thumbnail */}
         {stream.thumb ? (
           <Box
@@ -200,10 +221,11 @@ const ActiveStreamCard: React.FC<ActiveStreamCardProps> = ({
             src={stream.thumb}
             alt={stream.title}
             sx={{
-              width: 60,
-              height: 90,
+              width: { xs: 45, sm: 60 },
+              height: { xs: 68, sm: 90 },
               borderRadius: 1,
               objectFit: "cover",
+              flexShrink: 0,
             }}
             onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
               e.currentTarget.style.display = "none";
@@ -212,43 +234,66 @@ const ActiveStreamCard: React.FC<ActiveStreamCardProps> = ({
         ) : (
           <Box
             sx={{
-              width: 60,
-              height: 90,
+              width: { xs: 45, sm: 60 },
+              height: { xs: 68, sm: 90 },
               borderRadius: 1,
               bgcolor: alpha(theme.palette.primary.main, 0.1),
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              flexShrink: 0,
             }}
           >
             {stream.type === "episode" ? <Tv /> : <Movie />}
           </Box>
         )}
 
-        <Box sx={{ flex: 1 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              mb: 0.5,
+              flexWrap: "wrap",
+            }}
+          >
             <Avatar
               sx={{
-                width: 24,
-                height: 24,
+                width: { xs: 20, sm: 24 },
+                height: { xs: 20, sm: 24 },
                 bgcolor: "primary.main",
-                fontSize: 12,
+                fontSize: { xs: 10, sm: 12 },
               }}
             >
               {stream.user.charAt(0).toUpperCase()}
             </Avatar>
-            <Typography variant="body2" fontWeight={600}>
+            <Typography
+              variant="body2"
+              fontWeight={600}
+              sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+              noWrap
+            >
               {stream.user}
             </Typography>
             <Chip
               label={stream.player.state}
               size="small"
               color={stream.player.state === "playing" ? "success" : "default"}
-              sx={{ ml: "auto", height: 20, fontSize: "0.7rem" }}
+              sx={{
+                ml: "auto",
+                height: { xs: 18, sm: 20 },
+                fontSize: { xs: "0.6rem", sm: "0.7rem" },
+              }}
             />
           </Box>
 
-          <Typography variant="subtitle2" fontWeight={600} noWrap>
+          <Typography
+            variant="subtitle2"
+            fontWeight={600}
+            noWrap
+            sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
+          >
             {stream.grandparentTitle
               ? `${stream.grandparentTitle}`
               : stream.title}
@@ -322,10 +367,10 @@ const MediaItemCard: React.FC<MediaItemCardProps> = ({ item, type }) => {
     <Tooltip title={item.title} arrow>
       <Paper
         sx={{
-          width: 100,
+          width: { xs: 80, sm: 100 },
           flexShrink: 0,
           overflow: "hidden",
-          borderRadius: 2,
+          borderRadius: { xs: 1, sm: 2 },
           transition: "transform 0.2s",
           "&:hover": { transform: "scale(1.05)" },
         }}
@@ -337,7 +382,7 @@ const MediaItemCard: React.FC<MediaItemCardProps> = ({ item, type }) => {
             alt={item.title}
             sx={{
               width: "100%",
-              height: 150,
+              height: { xs: 120, sm: 150 },
               objectFit: "cover",
             }}
             onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -352,7 +397,7 @@ const MediaItemCard: React.FC<MediaItemCardProps> = ({ item, type }) => {
           <Box
             sx={{
               width: "100%",
-              height: 150,
+              height: { xs: 120, sm: 150 },
               bgcolor: alpha(theme.palette.primary.main, 0.1),
               display: "flex",
               alignItems: "center",
@@ -362,8 +407,14 @@ const MediaItemCard: React.FC<MediaItemCardProps> = ({ item, type }) => {
             {item.type === "episode" ? <Tv /> : <Movie />}
           </Box>
         )}
-        <Box sx={{ p: 1 }}>
-          <Typography variant="caption" noWrap display="block" fontWeight={600}>
+        <Box sx={{ p: { xs: 0.5, sm: 1 } }}>
+          <Typography
+            variant="caption"
+            noWrap
+            display="block"
+            fontWeight={600}
+            sx={{ fontSize: { xs: "0.65rem", sm: "0.75rem" } }}
+          >
             {item.grandparentTitle || item.title}
           </Typography>
           {item.grandparentTitle && (
@@ -372,6 +423,7 @@ const MediaItemCard: React.FC<MediaItemCardProps> = ({ item, type }) => {
               color="text.secondary"
               noWrap
               display="block"
+              sx={{ fontSize: { xs: "0.6rem", sm: "0.7rem" } }}
             >
               {item.title}
             </Typography>
@@ -578,20 +630,35 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%", overflow: "hidden" }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h3" gutterBottom sx={{ fontWeight: 700 }}>
+      <Box sx={{ mb: { xs: 2, sm: 4 } }}>
+        <Typography
+          variant="h3"
+          gutterBottom
+          sx={{
+            fontWeight: 700,
+            fontSize: { xs: "1.75rem", sm: "2.5rem", md: "3rem" },
+          }}
+        >
           Dashboard
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography
+          variant="body1"
+          color="text.secondary"
+          sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+        >
           Real-time monitoring of your Plex Media Server
           {plexStatus?.serverName && ` - ${plexStatus.serverName}`}
         </Typography>
       </Box>
 
       {/* Stats Grid */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid
+        container
+        spacing={{ xs: 1.5, sm: 2, md: 3 }}
+        sx={{ mb: { xs: 2, sm: 4 } }}
+      >
         <Grid item xs={6} sm={6} md={3}>
           <StatCard
             title="Active Streams"
@@ -652,43 +719,75 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
       </Grid>
 
       {/* Active Streams & System Metrics */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid
+        container
+        spacing={{ xs: 1.5, sm: 2, md: 3 }}
+        sx={{ mb: { xs: 2, sm: 4 } }}
+      >
         {/* Active Streams */}
         <Grid item xs={12} lg={8}>
           <Card>
             <CardActionArea onClick={() => onNavigate?.("plex-status")}>
-              <CardContent>
+              <CardContent
+                sx={{
+                  p: { xs: 1.5, sm: 2 },
+                  "&:last-child": { pb: { xs: 1.5, sm: 2 } },
+                }}
+              >
                 <Box
                   sx={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    mb: 2,
+                    mb: { xs: 1, sm: 2 },
+                    flexWrap: "wrap",
+                    gap: 1,
                   }}
                 >
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: { xs: "1rem", sm: "1.25rem" },
+                    }}
+                  >
                     Active Streams ({streams.length})
                   </Typography>
                   {streams.length > 0 && (
-                    <Box sx={{ display: "flex", gap: 1 }}>
+                    <Box sx={{ display: "flex", gap: 0.5 }}>
                       <Chip
-                        label={`${streams.filter((s) => !s.transcoding).length} Direct`}
+                        label={`${streams.filter((s: PlexStream) => !s.transcoding).length} Direct`}
                         size="small"
                         color="success"
                         variant="outlined"
+                        sx={{
+                          height: { xs: 20, sm: 24 },
+                          fontSize: { xs: "0.65rem", sm: "0.75rem" },
+                        }}
                       />
                       <Chip
-                        label={`${streams.filter((s) => s.transcoding).length} Transcode`}
+                        label={`${streams.filter((s: PlexStream) => s.transcoding).length} Transcode`}
                         size="small"
                         color="warning"
                         variant="outlined"
+                        sx={{
+                          height: { xs: 20, sm: 24 },
+                          fontSize: { xs: "0.65rem", sm: "0.75rem" },
+                        }}
                       />
                     </Box>
                   )}
                 </Box>
               </CardContent>
             </CardActionArea>
-            <Box sx={{ px: 2, pb: 2, maxHeight: 400, overflowY: "auto" }}>
+            <Box
+              sx={{
+                px: { xs: 1.5, sm: 2 },
+                pb: { xs: 1.5, sm: 2 },
+                maxHeight: 400,
+                overflowY: "auto",
+              }}
+            >
               {loading ? (
                 <Skeleton
                   variant="rectangular"
@@ -696,7 +795,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
                   sx={{ borderRadius: 2 }}
                 />
               ) : streams.length > 0 ? (
-                streams.map((stream) => (
+                streams.map((stream: PlexStream) => (
                   <ActiveStreamCard
                     key={stream.id}
                     stream={stream}
@@ -704,16 +803,20 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
                   />
                 ))
               ) : (
-                <Box sx={{ textAlign: "center", py: 4 }}>
+                <Box sx={{ textAlign: "center", py: { xs: 2, sm: 4 } }}>
                   <PlayArrow
                     sx={{
-                      fontSize: 48,
+                      fontSize: { xs: 32, sm: 48 },
                       color: "text.secondary",
                       opacity: 0.5,
                       mb: 1,
                     }}
                   />
-                  <Typography variant="body1" color="text.secondary">
+                  <Typography
+                    variant="body1"
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+                  >
                     No active streams
                   </Typography>
                 </Box>
@@ -724,15 +827,34 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
 
         {/* System Metrics */}
         <Grid item xs={12} lg={4}>
-          <Card sx={{ height: "100%" }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+          <Card
+            sx={{
+              height: "100%",
+              cursor: "pointer",
+              "&:hover": { opacity: 0.9 },
+            }}
+            onClick={() => onNavigate?.("host-monitor")}
+          >
+            <CardContent
+              sx={{
+                p: { xs: 1.5, sm: 2 },
+                "&:last-child": { pb: { xs: 1.5, sm: 2 } },
+              }}
+            >
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: "1rem", sm: "1.25rem" },
+                }}
+              >
                 System Resources
               </Typography>
 
               {metrics ? (
                 <Box>
-                  <Box sx={{ mb: 3 }}>
+                  <Box sx={{ mb: { xs: 2, sm: 3 } }}>
                     <Box
                       sx={{
                         display: "flex",
@@ -741,19 +863,33 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
                       }}
                     >
                       <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
                       >
-                        <Speed sx={{ fontSize: 18, color: "primary.main" }} />
-                        <Typography variant="body2">CPU</Typography>
+                        <Speed
+                          sx={{
+                            fontSize: { xs: 16, sm: 18 },
+                            color: "primary.main",
+                          }}
+                        />
+                        <Typography
+                          variant="body2"
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                        >
+                          CPU
+                        </Typography>
                       </Box>
-                      <Typography variant="body2" fontWeight={600}>
+                      <Typography
+                        variant="body2"
+                        fontWeight={600}
+                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                      >
                         {metrics.cpu.percent.toFixed(1)}%
                       </Typography>
                     </Box>
                     <LinearProgress
                       variant="determinate"
                       value={metrics.cpu.percent}
-                      sx={{ height: 8, borderRadius: 4 }}
+                      sx={{ height: { xs: 6, sm: 8 }, borderRadius: 4 }}
                       color={
                         metrics.cpu.percent > 80
                           ? "error"
@@ -764,7 +900,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
                     />
                   </Box>
 
-                  <Box sx={{ mb: 3 }}>
+                  <Box sx={{ mb: { xs: 2, sm: 3 } }}>
                     <Box
                       sx={{
                         display: "flex",
@@ -773,14 +909,26 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
                       }}
                     >
                       <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
                       >
                         <Storage
-                          sx={{ fontSize: 18, color: "secondary.main" }}
+                          sx={{
+                            fontSize: { xs: 16, sm: 18 },
+                            color: "secondary.main",
+                          }}
                         />
-                        <Typography variant="body2">Memory</Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                        >
+                          Memory
+                        </Typography>
                       </Box>
-                      <Typography variant="body2" fontWeight={600}>
+                      <Typography
+                        variant="body2"
+                        fontWeight={600}
+                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                      >
                         {formatBytes(metrics.memory.used)} /{" "}
                         {formatBytes(metrics.memory.total)}
                       </Typography>
@@ -788,7 +936,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
                     <LinearProgress
                       variant="determinate"
                       value={metrics.memory.percent}
-                      sx={{ height: 8, borderRadius: 4 }}
+                      sx={{ height: { xs: 6, sm: 8 }, borderRadius: 4 }}
                       color={
                         metrics.memory.percent > 80
                           ? "error"
@@ -799,7 +947,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
                     />
                   </Box>
 
-                  <Box sx={{ mb: 3 }}>
+                  <Box sx={{ mb: { xs: 2, sm: 3 } }}>
                     <Box
                       sx={{
                         display: "flex",
@@ -808,19 +956,33 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
                       }}
                     >
                       <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
                       >
-                        <Storage sx={{ fontSize: 18, color: "info.main" }} />
-                        <Typography variant="body2">Disk</Typography>
+                        <Storage
+                          sx={{
+                            fontSize: { xs: 16, sm: 18 },
+                            color: "info.main",
+                          }}
+                        />
+                        <Typography
+                          variant="body2"
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                        >
+                          Disk
+                        </Typography>
                       </Box>
-                      <Typography variant="body2" fontWeight={600}>
+                      <Typography
+                        variant="body2"
+                        fontWeight={600}
+                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                      >
                         {formatBytes(metrics.disk.free)} free
                       </Typography>
                     </Box>
                     <LinearProgress
                       variant="determinate"
                       value={metrics.disk.percent}
-                      sx={{ height: 8, borderRadius: 4 }}
+                      sx={{ height: { xs: 6, sm: 8 }, borderRadius: 4 }}
                       color={
                         metrics.disk.percent > 80
                           ? "error"
@@ -834,7 +996,10 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
                   <Typography
                     variant="body2"
                     color="text.secondary"
-                    sx={{ textAlign: "center" }}
+                    sx={{
+                      textAlign: "center",
+                      fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                    }}
                   >
                     Uptime: {metrics.uptimeFormatted}
                   </Typography>
@@ -849,18 +1014,38 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
 
       {/* Recently Added */}
       {recentlyAdded.length > 0 && (
-        <Card sx={{ mb: 4 }}>
-          <CardContent>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-              <NewReleases sx={{ color: "primary.main" }} />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+        <Card sx={{ mb: { xs: 2, sm: 4 } }}>
+          <CardContent
+            sx={{
+              p: { xs: 1.5, sm: 2 },
+              "&:last-child": { pb: { xs: 1.5, sm: 2 } },
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                mb: { xs: 1, sm: 2 },
+              }}
+            >
+              <NewReleases
+                sx={{ color: "primary.main", fontSize: { xs: 20, sm: 24 } }}
+              />
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: "1rem", sm: "1.25rem" },
+                }}
+              >
                 Recently Added
               </Typography>
             </Box>
             <Box
               sx={{
                 display: "flex",
-                gap: 2,
+                gap: { xs: 1, sm: 2 },
                 overflowX: "auto",
                 pb: 1,
                 "&::-webkit-scrollbar": { height: 6 },
@@ -870,7 +1055,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
                 },
               }}
             >
-              {recentlyAdded.map((item, i) => (
+              {recentlyAdded.map((item: PlexMediaItem, i: number) => (
                 <MediaItemCard key={i} item={item} type="recently-added" />
               ))}
             </Box>
@@ -880,18 +1065,38 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
 
       {/* On Deck */}
       {onDeck.length > 0 && (
-        <Card sx={{ mb: 4 }}>
-          <CardContent>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-              <History sx={{ color: "warning.main" }} />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+        <Card sx={{ mb: { xs: 2, sm: 4 } }}>
+          <CardContent
+            sx={{
+              p: { xs: 1.5, sm: 2 },
+              "&:last-child": { pb: { xs: 1.5, sm: 2 } },
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                mb: { xs: 1, sm: 2 },
+              }}
+            >
+              <History
+                sx={{ color: "warning.main", fontSize: { xs: 20, sm: 24 } }}
+              />
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: "1rem", sm: "1.25rem" },
+                }}
+              >
                 Continue Watching
               </Typography>
             </Box>
             <Box
               sx={{
                 display: "flex",
-                gap: 2,
+                gap: { xs: 1, sm: 2 },
                 overflowX: "auto",
                 pb: 1,
                 "&::-webkit-scrollbar": { height: 6 },
@@ -901,7 +1106,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
                 },
               }}
             >
-              {onDeck.map((item, i) => (
+              {onDeck.map((item: PlexMediaItem, i: number) => (
                 <MediaItemCard key={i} item={item} type="on-deck" />
               ))}
             </Box>
@@ -912,11 +1117,27 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, alerts, onNavigate }) => {
       {/* Alert Timeline */}
       <Card>
         <CardActionArea onClick={() => onNavigate?.("open-alerts")}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+          <CardContent
+            sx={{
+              p: { xs: 1.5, sm: 2 },
+              "&:last-child": { pb: { xs: 1.5, sm: 2 } },
+            }}
+          >
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ fontWeight: 600, fontSize: { xs: "1rem", sm: "1.25rem" } }}
+            >
               Alert Timeline (Last Hour)
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                mb: { xs: 1, sm: 2 },
+                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+              }}
+            >
               {stats.errorCount || 0} errors, {stats.warningCount || 0} warnings
             </Typography>
             <ErrorTimelineChart data={timelineData} />

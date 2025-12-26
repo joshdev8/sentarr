@@ -107,21 +107,32 @@ const PlexStatusComponent: React.FC<PlexStatusProps> = () => {
   const streams = streamsData?.streams || [];
 
   return (
-    <Box>
+    <Box sx={{ width: "100%", overflow: "hidden" }}>
       {/* Header */}
       <Box
         sx={{
-          mb: 4,
+          mb: { xs: 2, sm: 4 },
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
         }}
       >
-        <Box>
-          <Typography variant="h3" gutterBottom sx={{ fontWeight: 700 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
+            variant="h3"
+            gutterBottom
+            sx={{
+              fontWeight: 700,
+              fontSize: { xs: "1.75rem", sm: "2.5rem", md: "3rem" },
+            }}
+          >
             Plex Status
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+          >
             Real-time Plex server information and active streams
           </Typography>
         </Box>
@@ -134,7 +145,7 @@ const PlexStatusComponent: React.FC<PlexStatusProps> = () => {
       </Box>
 
       {/* Connection Status */}
-      <Card sx={{ mb: 3 }}>
+      <Card sx={{ mb: { xs: 2, sm: 3 } }}>
         <CardContent>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
             {loading ? (
@@ -201,7 +212,7 @@ const PlexStatusComponent: React.FC<PlexStatusProps> = () => {
 
           {/* Library Stats */}
           {plexStatus?.connected && (
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
               <Grid item xs={6} sm={3}>
                 <Box
                   sx={{
@@ -283,9 +294,9 @@ const PlexStatusComponent: React.FC<PlexStatusProps> = () => {
 
       {/* Bandwidth Summary */}
       {streamsData && streams.length > 0 && (
-        <Card sx={{ mb: 3 }}>
+        <Card sx={{ mb: { xs: 2, sm: 3 } }}>
           <CardContent>
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
               <Grid item xs={4}>
                 <Box sx={{ textAlign: "center" }}>
                   <Wifi sx={{ fontSize: 24, color: "info.main", mb: 1 }} />
@@ -353,7 +364,11 @@ const PlexStatusComponent: React.FC<PlexStatusProps> = () => {
           </CardContent>
         </Card>
       ) : (
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid
+          container
+          spacing={{ xs: 1.5, sm: 2, md: 3 }}
+          sx={{ mb: { xs: 2, sm: 4 } }}
+        >
           {streams.map((stream) => (
             <Grid item xs={12} key={stream.id}>
               <Card
@@ -737,7 +752,7 @@ const PlexStatusComponent: React.FC<PlexStatusProps> = () => {
             System Metrics
           </Typography>
 
-          <Grid container spacing={3}>
+          <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
             <Grid item xs={12} md={4}>
               <Card>
                 <CardContent>

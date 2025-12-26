@@ -142,40 +142,68 @@ const LogViewer: React.FC = () => {
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%", overflow: "hidden" }}>
       {/* Header */}
       <Box
         sx={{
-          mb: 4,
+          mb: { xs: 2, sm: 4 },
           display: "flex",
-          alignItems: "center",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
           justifyContent: "space-between",
+          gap: { xs: 2, sm: 0 },
         }}
       >
-        <Box>
-          <Typography variant="h3" gutterBottom sx={{ fontWeight: 700 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
+            variant="h3"
+            gutterBottom
+            sx={{
+              fontWeight: 700,
+              fontSize: { xs: "1.75rem", sm: "2.5rem", md: "3rem" },
+            }}
+          >
             Log Viewer
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+          >
             Real-time Plex Media Server logs
           </Typography>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: { xs: 1, sm: 2 },
+            alignItems: "center",
+            justifyContent: { xs: "flex-end", sm: "flex-start" },
+          }}
+        >
           <FormControlLabel
             control={
               <Switch
                 checked={isLive}
                 onChange={(e) => setIsLive(e.target.checked)}
                 color="success"
+                size="small"
               />
             }
             label={
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  fontSize: { xs: "0.8rem", sm: "1rem" },
+                }}
+              >
                 {isLive ? (
-                  <PlayArrow sx={{ fontSize: 18 }} />
+                  <PlayArrow sx={{ fontSize: { xs: 16, sm: 18 } }} />
                 ) : (
-                  <Pause sx={{ fontSize: 18 }} />
+                  <Pause sx={{ fontSize: { xs: 16, sm: 18 } }} />
                 )}
                 Live
               </Box>
@@ -183,7 +211,12 @@ const LogViewer: React.FC = () => {
           />
 
           <Tooltip title="Refresh">
-            <IconButton onClick={fetchLogs} color="primary" disabled={isLive}>
+            <IconButton
+              onClick={fetchLogs}
+              color="primary"
+              disabled={isLive}
+              size="small"
+            >
               <Refresh />
             </IconButton>
           </Tooltip>
@@ -191,12 +224,17 @@ const LogViewer: React.FC = () => {
       </Box>
 
       {/* Filters */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
+      <Card sx={{ mb: { xs: 2, sm: 3 } }}>
+        <CardContent
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            "&:last-child": { pb: { xs: 1.5, sm: 2 } },
+          }}
+        >
           <Box
             sx={{
               display: "flex",
-              gap: 2,
+              gap: { xs: 1, sm: 2 },
               flexWrap: "wrap",
               alignItems: "center",
             }}
@@ -206,7 +244,10 @@ const LogViewer: React.FC = () => {
               placeholder="Search logs..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              sx={{ minWidth: 250 }}
+              sx={{
+                minWidth: { xs: 150, sm: 250 },
+                flex: { xs: 1, sm: "unset" },
+              }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">

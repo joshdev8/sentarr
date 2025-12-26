@@ -30,6 +30,7 @@ import {
   Brightness7,
   Tv,
   Terminal,
+  Monitor,
 } from "@mui/icons-material";
 
 import Dashboard from "./components/Dashboard";
@@ -38,6 +39,7 @@ import ClosedAlerts from "./components/ClosedAlerts";
 import Settings from "./components/Settings";
 import PlexStatus from "./components/PlexStatus";
 import LogViewer from "./components/LogViewer";
+import HostMonitor from "./components/HostMonitor";
 
 import { Alert, Stats, PageType, SystemHealth } from "./types";
 import { apiService } from "./services/api";
@@ -331,6 +333,37 @@ const App: React.FC = () => {
           </ListItemButton>
         </ListItem>
 
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={currentPage === "host-monitor"}
+            onClick={() => handlePageChange("host-monitor")}
+            sx={{
+              mx: 1,
+              mb: 1,
+              borderRadius: 2,
+              "&.Mui-selected": {
+                backgroundColor: "primary.main",
+                color: "background.default",
+                "&:hover": {
+                  backgroundColor: "primary.dark",
+                },
+              },
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                color:
+                  currentPage === "host-monitor"
+                    ? "background.default"
+                    : "secondary.main",
+              }}
+            >
+              <Monitor />
+            </ListItemIcon>
+            <ListItemText primary="Host Monitoring" />
+          </ListItemButton>
+        </ListItem>
+
         <Divider sx={{ my: 2, opacity: 0.3 }} />
 
         <ListItem disablePadding>
@@ -468,6 +501,8 @@ const App: React.FC = () => {
         return <PlexStatus />;
       case "logs":
         return <LogViewer />;
+      case "host-monitor":
+        return <HostMonitor />;
       case "open-alerts":
         return (
           <OpenAlerts
@@ -572,9 +607,11 @@ const App: React.FC = () => {
           component="main"
           sx={{
             flexGrow: 1,
-            p: 3,
-            width: { sm: `calc(100% - ${drawerWidth}px)` },
-            mt: 8,
+            p: { xs: 1.5, sm: 2, md: 3 },
+            width: { xs: "100%", sm: `calc(100% - ${drawerWidth}px)` },
+            mt: { xs: 7, sm: 8 },
+            minHeight: "100vh",
+            overflow: "hidden",
           }}
         >
           {renderPage()}

@@ -12,6 +12,7 @@ import {
   SystemHealth,
   RecentlyAddedResponse,
   OnDeckResponse,
+  HostMetrics,
 } from "../types";
 
 // In production, use relative URL so nginx proxies to the API
@@ -115,6 +116,10 @@ class ApiService {
 
   async getSystemHealth(): Promise<SystemHealth> {
     return this.fetchJson<SystemHealth>("/system/health");
+  }
+
+  async getHostMetrics(): Promise<HostMetrics> {
+    return this.fetchJson<HostMetrics>("/host/metrics");
   }
 
   // ============================================

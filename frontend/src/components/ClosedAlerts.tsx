@@ -198,13 +198,27 @@ const ClosedAlerts: React.FC<ClosedAlertsProps> = ({ alerts }) => {
     : alerts;
 
   return (
-    <Box>
+    <Box sx={{ width: "100%", overflow: "hidden" }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h3" gutterBottom sx={{ fontWeight: 700 }}>
+      <Box sx={{ mb: { xs: 2, sm: 4 } }}>
+        <Typography
+          variant="h3"
+          gutterBottom
+          sx={{
+            fontWeight: 700,
+            fontSize: { xs: "1.75rem", sm: "2.5rem", md: "3rem" },
+          }}
+        >
           Closed Alerts
         </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        <Typography
+          variant="body1"
+          color="text.secondary"
+          sx={{
+            mb: { xs: 1.5, sm: 3 },
+            fontSize: { xs: "0.875rem", sm: "1rem" },
+          }}
+        >
           {filteredAlerts.length} resolved alert
           {filteredAlerts.length !== 1 ? "s" : ""}
         </Typography>

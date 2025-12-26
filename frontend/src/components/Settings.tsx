@@ -176,30 +176,45 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%", overflow: "hidden" }}>
       {/* Header */}
       <Box
         sx={{
-          mb: 4,
+          mb: { xs: 2, sm: 4 },
           display: "flex",
-          alignItems: "center",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
           justifyContent: "space-between",
+          gap: { xs: 2, sm: 0 },
         }}
       >
-        <Box>
-          <Typography variant="h3" gutterBottom sx={{ fontWeight: 700 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
+            variant="h3"
+            gutterBottom
+            sx={{
+              fontWeight: 700,
+              fontSize: { xs: "1.75rem", sm: "2.5rem", md: "3rem" },
+            }}
+          >
             Settings
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+          >
             Configure monitoring, alerts, and notifications
           </Typography>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 2 }}>
+        <Box sx={{ display: "flex", gap: { xs: 1, sm: 2 }, flexWrap: "wrap" }}>
           <Button
             variant="outlined"
             startIcon={<Refresh />}
             onClick={loadConfig}
+            size="small"
+            sx={{ flex: { xs: 1, sm: "unset" } }}
           >
             Refresh
           </Button>
@@ -209,20 +224,22 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
             startIcon={saving ? <CircularProgress size={20} /> : <Save />}
             onClick={handleSave}
             disabled={!hasChanges || saving}
+            size="small"
+            sx={{ flex: { xs: 1, sm: "unset" } }}
           >
-            Save Changes
+            Save
           </Button>
         </Box>
       </Box>
 
       {/* Monitoring Settings */}
-      <Card sx={{ mb: 3 }}>
+      <Card sx={{ mb: { xs: 2, sm: 3 } }}>
         <CardContent>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
             Monitoring Settings
           </Typography>
 
-          <Grid container spacing={3}>
+          <Grid container spacing={{ xs: 2, sm: 3 }}>
             <Grid item xs={12} md={6}>
               <FormControlLabel
                 control={

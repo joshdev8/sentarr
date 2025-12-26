@@ -97,31 +97,47 @@ const AlertCard: React.FC<AlertCardProps> = ({
         },
       }}
     >
-      <CardContent sx={{ pl: 3 }}>
+      <CardContent
+        sx={{
+          pl: { xs: 2, sm: 3 },
+          pr: { xs: 1, sm: 2 },
+          py: { xs: 1.5, sm: 2 },
+        }}
+      >
         <Box
           sx={{
             display: "flex",
             alignItems: "flex-start",
             justifyContent: "space-between",
-            mb: 2,
+            mb: { xs: 1, sm: 2 },
+            gap: 1,
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: { xs: 0.5, sm: 1 },
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
             <Box
               sx={{
-                width: 40,
-                height: 40,
+                width: { xs: 32, sm: 40 },
+                height: { xs: 32, sm: 40 },
                 borderRadius: 2,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 backgroundColor: alpha(severityColors[alert.severity], 0.1),
                 color: severityColors[alert.severity],
+                flexShrink: 0,
               }}
             >
               {severityIcons[alert.severity]}
             </Box>
-            <Box>
+            <Box sx={{ minWidth: 0 }}>
               <Chip
                 label={alert.severity.toUpperCase()}
                 size="small"
@@ -130,20 +146,27 @@ const AlertCard: React.FC<AlertCardProps> = ({
                   color: "white",
                   fontWeight: 600,
                   mb: 0.5,
+                  height: { xs: 20, sm: 24 },
+                  fontSize: { xs: "0.65rem", sm: "0.75rem" },
                 }}
               />
               <Typography
                 variant="caption"
                 display="block"
                 color="text.secondary"
+                sx={{ fontSize: { xs: "0.65rem", sm: "0.75rem" } }}
               >
                 {new Date(alert.timestamp).toLocaleString()}
               </Typography>
             </Box>
           </Box>
 
-          <IconButton size="small" onClick={handleMenuOpen}>
-            <MoreVert />
+          <IconButton
+            size="small"
+            onClick={handleMenuOpen}
+            sx={{ flexShrink: 0 }}
+          >
+            <MoreVert fontSize="small" />
           </IconButton>
 
           <Menu
@@ -385,28 +408,41 @@ const OpenAlerts: React.FC<OpenAlertsProps> = ({ alerts, onRefresh }) => {
       : alerts.filter((alert) => alert.severity === filterSeverity);
 
   return (
-    <Box>
+    <Box sx={{ width: "100%", overflow: "hidden" }}>
       {/* Header */}
       <Box
         sx={{
-          mb: 4,
+          mb: { xs: 2, sm: 4 },
           display: "flex",
-          alignItems: "center",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
           justifyContent: "space-between",
+          gap: { xs: 2, sm: 0 },
         }}
       >
-        <Box>
-          <Typography variant="h3" gutterBottom sx={{ fontWeight: 700 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
+            variant="h3"
+            gutterBottom
+            sx={{
+              fontWeight: 700,
+              fontSize: { xs: "1.75rem", sm: "2.5rem", md: "3rem" },
+            }}
+          >
             Open Alerts
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+          >
             {filteredAlerts.length} alert
             {filteredAlerts.length !== 1 ? "s" : ""} requiring attention
           </Typography>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 2 }}>
-          <FormControl size="small" sx={{ minWidth: 150 }}>
+        <Box sx={{ display: "flex", gap: { xs: 1, sm: 2 }, flexWrap: "wrap" }}>
+          <FormControl size="small" sx={{ minWidth: { xs: 120, sm: 150 } }}>
             <InputLabel>Filter by Severity</InputLabel>
             <Select
               value={filterSeverity}

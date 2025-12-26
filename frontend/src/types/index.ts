@@ -108,7 +108,8 @@ export type PageType =
   | "closed-alerts"
   | "settings"
   | "logs"
-  | "plex-status";
+  | "plex-status"
+  | "host-monitor";
 
 // Plex Types
 export interface PlexLibrary {
@@ -278,4 +279,116 @@ export interface SystemHealth {
   plexServerName?: string;
   logPath: string;
   logPathExists: boolean;
+}
+
+// Host Monitoring Types
+export interface DiskInfo {
+  device: string;
+  mountpoint: string;
+  fstype: string;
+  total: number;
+  used: number;
+  free: number;
+  percent: number;
+}
+
+export interface NetworkInterface {
+  name: string;
+  ip: string;
+  isUp: boolean;
+  speed: number;
+  bytesSent: number;
+  bytesRecv: number;
+  packetsSent: number;
+  packetsRecv: number;
+}
+
+export interface ProcessInfo {
+  pid: number;
+  name: string;
+  cpu: number;
+  memory: number;
+  status: string;
+}
+
+export interface TemperatureInfo {
+  name: string;
+  current: number;
+  high?: number;
+  critical?: number;
+}
+
+export interface MetricsHistoryPoint {
+  time: string;
+  value?: number;
+  sent?: number;
+  recv?: number;
+  read?: number;
+  write?: number;
+}
+
+export interface HostMetrics {
+  cpu: {
+    percent: number;
+    perCore: number[];
+    logicalCores: number;
+    physicalCores: number;
+    frequency?: {
+      current: number;
+      min: number;
+      max: number;
+    };
+    loadAverage: {
+      "1min": number;
+      "5min": number;
+      "15min": number;
+    };
+  };
+  memory: {
+    total: number;
+    available: number;
+    used: number;
+    free: number;
+    percent: number;
+    cached: number;
+    buffers: number;
+  };
+  swap: {
+    total: number;
+    used: number;
+    free: number;
+    percent: number;
+  };
+  disks: DiskInfo[];
+  diskIO?: {
+    readBytes: number;
+    writeBytes: number;
+    readCount: number;
+    writeCount: number;
+  };
+  network: {
+    interfaces: NetworkInterface[];
+    total: {
+      bytesSent: number;
+      bytesRecv: number;
+      packetsSent: number;
+      packetsRecv: number;
+    };
+  };
+  processes: ProcessInfo[];
+  temperatures: TemperatureInfo[];
+  uptime: {
+    system: number;
+    systemFormatted: string;
+    app: number;
+    appFormatted: string;
+    bootTime: string;
+  };
+  history: {
+    cpu: MetricsHistoryPoint[];
+    memory: MetricsHistoryPoint[];
+    network: MetricsHistoryPoint[];
+    diskIO: MetricsHistoryPoint[];
+  };
+  updatedAt?: string;
 }
