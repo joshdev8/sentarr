@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -12,22 +12,21 @@ import {
   Tooltip,
   TextField,
   InputAdornment,
-} from '@mui/material';
-import {
-  CheckCircle,
-  Search,
-  Delete,
-} from '@mui/icons-material';
+} from "@mui/material";
+import { CheckCircle, Search, Delete } from "@mui/icons-material";
 
-import { Alert, AlertSeverity } from '../types';
-import { apiService } from '../services/api';
+import { Alert, AlertSeverity } from "../types";
+import { apiService } from "../services/api";
 
 interface ClosedAlertCardProps {
   alert: Alert;
   onDelete: (alertId: string) => void;
 }
 
-const ClosedAlertCard: React.FC<ClosedAlertCardProps> = ({ alert, onDelete }) => {
+const ClosedAlertCard: React.FC<ClosedAlertCardProps> = ({
+  alert,
+  onDelete,
+}) => {
   const theme = useTheme();
 
   const severityColors: Record<AlertSeverity, string> = {
@@ -40,36 +39,43 @@ const ClosedAlertCard: React.FC<ClosedAlertCardProps> = ({ alert, onDelete }) =>
   return (
     <Card
       sx={{
-        position: 'relative',
-        overflow: 'hidden',
+        position: "relative",
+        overflow: "hidden",
         opacity: 0.8,
-        transition: 'opacity 0.2s, transform 0.2s',
-        '&:hover': {
+        transition: "opacity 0.2s, transform 0.2s",
+        "&:hover": {
           opacity: 1,
-          transform: 'translateY(-2px)',
+          transform: "translateY(-2px)",
         },
-        '&::before': {
+        "&::before": {
           content: '""',
-          position: 'absolute',
+          position: "absolute",
           top: 0,
           left: 0,
           bottom: 0,
-          width: '4px',
+          width: "4px",
           background: alpha(severityColors[alert.severity], 0.5),
         },
       }}
     >
       <CardContent sx={{ pl: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            mb: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
             <Box
               sx={{
                 width: 40,
                 height: 40,
                 borderRadius: 2,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 backgroundColor: alpha(theme.palette.success.main, 0.1),
                 color: theme.palette.success.main,
               }}
@@ -82,19 +88,27 @@ const ClosedAlertCard: React.FC<ClosedAlertCardProps> = ({ alert, onDelete }) =>
                 size="small"
                 sx={{
                   backgroundColor: theme.palette.success.main,
-                  color: 'white',
+                  color: "white",
                   fontWeight: 600,
                   mb: 0.5,
                 }}
               />
-              <Typography variant="caption" display="block" color="text.secondary">
+              <Typography
+                variant="caption"
+                display="block"
+                color="text.secondary"
+              >
                 {new Date(alert.timestamp).toLocaleString()}
               </Typography>
             </Box>
           </Box>
 
           <Tooltip title="Delete">
-            <IconButton size="small" onClick={() => onDelete(alert.id)} color="error">
+            <IconButton
+              size="small"
+              onClick={() => onDelete(alert.id)}
+              color="error"
+            >
               <Delete fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -108,7 +122,7 @@ const ClosedAlertCard: React.FC<ClosedAlertCardProps> = ({ alert, onDelete }) =>
           {alert.message}
         </Typography>
 
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
           <Chip
             label={alert.severity.toUpperCase()}
             size="small"
@@ -120,7 +134,7 @@ const ClosedAlertCard: React.FC<ClosedAlertCardProps> = ({ alert, onDelete }) =>
           />
           {alert.pattern && (
             <Chip
-              label={alert.pattern.replace('_', ' ')}
+              label={alert.pattern.replace("_", " ")}
               size="small"
               variant="outlined"
             />
@@ -137,7 +151,12 @@ const ClosedAlertCard: React.FC<ClosedAlertCardProps> = ({ alert, onDelete }) =>
               borderColor: theme.palette.success.main,
             }}
           >
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+              sx={{ mb: 0.5 }}
+            >
               Resolved on {new Date(alert.resolvedAt).toLocaleString()}
               {alert.resolvedBy && ` by ${alert.resolvedBy}`}
             </Typography>
@@ -158,22 +177,23 @@ interface ClosedAlertsProps {
 }
 
 const ClosedAlerts: React.FC<ClosedAlertsProps> = ({ alerts }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleDelete = async (alertId: string) => {
     try {
       await apiService.deleteAlert(alertId);
       // In a real app, you'd want to refresh the alerts list here
     } catch (error) {
-      console.error('Failed to delete alert:', error);
+      console.error("Failed to delete alert:", error);
     }
   };
 
   const filteredAlerts = searchQuery
-    ? alerts.filter(alert =>
-        alert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        alert.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        alert.pattern?.toLowerCase().includes(searchQuery.toLowerCase())
+    ? alerts.filter(
+        (alert) =>
+          alert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          alert.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          alert.pattern?.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : alerts;
 
@@ -185,7 +205,8 @@ const ClosedAlerts: React.FC<ClosedAlertsProps> = ({ alerts }) => {
           Closed Alerts
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-          {filteredAlerts.length} resolved alert{filteredAlerts.length !== 1 ? 's' : ''}
+          {filteredAlerts.length} resolved alert
+          {filteredAlerts.length !== 1 ? "s" : ""}
         </Typography>
 
         <TextField
@@ -216,15 +237,22 @@ const ClosedAlerts: React.FC<ClosedAlertsProps> = ({ alerts }) => {
       ) : (
         <Card>
           <CardContent>
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <CheckCircle sx={{ fontSize: 64, color: 'success.main', mb: 2, opacity: 0.5 }} />
+            <Box sx={{ textAlign: "center", py: 8 }}>
+              <CheckCircle
+                sx={{
+                  fontSize: 64,
+                  color: "success.main",
+                  mb: 2,
+                  opacity: 0.5,
+                }}
+              />
               <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
                 No Closed Alerts
               </Typography>
               <Typography variant="body1" color="text.secondary">
                 {searchQuery
-                  ? 'No alerts match your search criteria.'
-                  : 'Resolved alerts will appear here.'}
+                  ? "No alerts match your search criteria."
+                  : "Resolved alerts will appear here."}
               </Typography>
             </Box>
           </CardContent>

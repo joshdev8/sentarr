@@ -1,16 +1,30 @@
 /// <reference types="vite/client" />
-import { Alert, AlertsResponse, Stats, SystemConfig, NotificationChannel } from '../types';
+import {
+  Alert,
+  AlertsResponse,
+  Stats,
+  SystemConfig,
+  NotificationChannel,
+  PlexStatus,
+  PlexStreamsResponse,
+  LogsResponse,
+  SystemMetrics,
+  SystemHealth,
+} from "../types";
 
 // In production, use relative URL so nginx proxies to the API
 // In development, Vite proxy handles /api -> localhost:5000
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
 class ApiService {
-  private async fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  private async fetchJson<T>(
+    endpoint: string,
+    options?: RequestInit,
+  ): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options?.headers,
       },
     });
@@ -22,65 +36,118 @@ class ApiService {
     return response.json();
   }
 
-  // Alerts
+  // ============================================
+  // ALERTS
+  // ============================================
+
   async getAlerts(): Promise<AlertsResponse> {
-    return this.fetchJson<AlertsResponse>('/alerts');
+    return this.fetchJson<AlertsResponse>("/alerts");
   }
 
   async resolveAlert(alertId: string, note?: string): Promise<Alert> {
     return this.fetchJson<Alert>(`/alerts/${alertId}/resolve`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ note }),
     });
   }
 
   async deleteAlert(alertId: string): Promise<void> {
     await this.fetchJson(`/alerts/${alertId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
-  // Stats
+  // ============================================
+  // STATS
+  // ============================================
+
   async getStats(): Promise<Stats> {
-    return this.fetchJson<Stats>('/stats');
+    return this.fetchJson<Stats>("/stats");
   }
 
-  // Config
+  // ============================================
+  // PLEX
+  // ============================================
+
+  async getPlexStatus(): Promise<PlexStatus> {
+    return this.fetchJson<PlexStatus>("/plex/status");
+  }
+
+  async getPlexStreams(): Promise<PlexStreamsResponse> {
+    return this.fetchJson<PlexStreamsResponse>("/plex/streams");
+  }
+
+  // ============================================
+  // LOGS
+  // ============================================
+
+  async getLogs(lines: number = 100, level?: string): Promise<LogsResponse> {
+    const params = new URLSearchParams({ lines: lines.toString() });
+    if (level && level !== "all") {
+      params.append("level", level);
+    }
+    return this.fetchJson<LogsResponse>(`/logs?${params}`);
+  }
+
+  // Get SSE stream URL for live logs
+  getLogStreamUrl(): string {
+    return `${API_BASE_URL}/logs/stream`;
+  }
+
+  // ============================================
+  // SYSTEM
+  // ============================================
+
+  async getSystemMetrics(): Promise<SystemMetrics> {
+    return this.fetchJson<SystemMetrics>("/system/metrics");
+  }
+
+  async getSystemHealth(): Promise<SystemHealth> {
+    return this.fetchJson<SystemHealth>("/system/health");
+  }
+
+  // ============================================
+  // CONFIG
+  // ============================================
+
   async getConfig(): Promise<SystemConfig> {
-    return this.fetchJson<SystemConfig>('/config');
+    return this.fetchJson<SystemConfig>("/config");
   }
 
   async updateConfig(config: Partial<SystemConfig>): Promise<SystemConfig> {
-    return this.fetchJson<SystemConfig>('/config', {
-      method: 'PUT',
+    return this.fetchJson<SystemConfig>("/config", {
+      method: "PUT",
       body: JSON.stringify(config),
     });
   }
 
-  // Notification Channels
+  // ============================================
+  // NOTIFICATION CHANNELS
+  // ============================================
+
   async getNotificationChannels(): Promise<NotificationChannel[]> {
-    return this.fetchJson<NotificationChannel[]>('/notifications/channels');
+    return this.fetchJson<NotificationChannel[]>("/notifications/channels");
   }
 
   async updateNotificationChannel(
     channelId: string,
-    updates: Partial<NotificationChannel>
+    updates: Partial<NotificationChannel>,
   ): Promise<NotificationChannel> {
-    return this.fetchJson<NotificationChannel>(`/notifications/channels/${channelId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
+    return this.fetchJson<NotificationChannel>(
+      `/notifications/channels/${channelId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(updates),
+      },
+    );
   }
 
-  async testNotificationChannel(channelId: string): Promise<{ success: boolean; message: string }> {
+  async testNotificationChannel(
+    channelId: string,
+  ): Promise<{ success: boolean; message: string }> {
     return this.fetchJson(`/notifications/channels/${channelId}/test`, {
-      method: 'POST',
+      method: "POST",
     });
-  }
-
-  // System
-  async getSystemHealth(): Promise<{ healthy: boolean; uptime: number; version: string }> {
-    return this.fetchJson('/system/health');
   }
 }
 

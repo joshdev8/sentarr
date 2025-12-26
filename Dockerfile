@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Install Python dependencies
-RUN pip install --no-cache-dir flask flask-cors requests plexapi
+RUN pip install --no-cache-dir flask flask-cors requests plexapi psutil
 
 # Copy Python services
 COPY app/monitor.py /app/monitor.py

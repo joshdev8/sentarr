@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -22,7 +22,7 @@ import {
   InputLabel,
   Select,
   SelectChangeEvent,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Error as ErrorIcon,
   Warning as WarningIcon,
@@ -30,10 +30,10 @@ import {
   Close,
   MoreVert,
   Refresh,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
-import { Alert, AlertSeverity } from '../types';
-import { apiService } from '../services/api';
+import { Alert, AlertSeverity } from "../types";
+import { apiService } from "../services/api";
 
 interface AlertCardProps {
   alert: Alert;
@@ -41,7 +41,11 @@ interface AlertCardProps {
   onDetails: (alert: Alert) => void;
 }
 
-const AlertCard: React.FC<AlertCardProps> = ({ alert, onResolve, onDetails }) => {
+const AlertCard: React.FC<AlertCardProps> = ({
+  alert,
+  onResolve,
+  onDetails,
+}) => {
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -75,35 +79,42 @@ const AlertCard: React.FC<AlertCardProps> = ({ alert, onResolve, onDetails }) =>
   return (
     <Card
       sx={{
-        position: 'relative',
-        overflow: 'hidden',
-        transition: 'transform 0.2s, box-shadow 0.2s',
-        '&:hover': {
-          transform: 'translateY(-2px)',
+        position: "relative",
+        overflow: "hidden",
+        transition: "transform 0.2s, box-shadow 0.2s",
+        "&:hover": {
+          transform: "translateY(-2px)",
           boxShadow: `0 8px 24px ${alpha(severityColors[alert.severity], 0.2)}`,
         },
-        '&::before': {
+        "&::before": {
           content: '""',
-          position: 'absolute',
+          position: "absolute",
           top: 0,
           left: 0,
           bottom: 0,
-          width: '4px',
+          width: "4px",
           background: severityColors[alert.severity],
         },
       }}
     >
       <CardContent sx={{ pl: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            mb: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Box
               sx={{
                 width: 40,
                 height: 40,
                 borderRadius: 2,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 backgroundColor: alpha(severityColors[alert.severity], 0.1),
                 color: severityColors[alert.severity],
               }}
@@ -116,12 +127,16 @@ const AlertCard: React.FC<AlertCardProps> = ({ alert, onResolve, onDetails }) =>
                 size="small"
                 sx={{
                   backgroundColor: severityColors[alert.severity],
-                  color: 'white',
+                  color: "white",
                   fontWeight: 600,
                   mb: 0.5,
                 }}
               />
-              <Typography variant="caption" display="block" color="text.secondary">
+              <Typography
+                variant="caption"
+                display="block"
+                color="text.secondary"
+              >
                 {new Date(alert.timestamp).toLocaleString()}
               </Typography>
             </Box>
@@ -130,18 +145,21 @@ const AlertCard: React.FC<AlertCardProps> = ({ alert, onResolve, onDetails }) =>
           <IconButton size="small" onClick={handleMenuOpen}>
             <MoreVert />
           </IconButton>
-          
+
           <Menu
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
           >
-            <MenuItem onClick={() => { handleMenuClose(); onDetails(alert); }}>
+            <MenuItem
+              onClick={() => {
+                handleMenuClose();
+                onDetails(alert);
+              }}
+            >
               View Details
             </MenuItem>
-            <MenuItem onClick={handleResolve}>
-              Mark as Resolved
-            </MenuItem>
+            <MenuItem onClick={handleResolve}>Mark as Resolved</MenuItem>
           </Menu>
         </Box>
 
@@ -153,10 +171,10 @@ const AlertCard: React.FC<AlertCardProps> = ({ alert, onResolve, onDetails }) =>
           {alert.message}
         </Typography>
 
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           {alert.pattern && (
             <Chip
-              label={alert.pattern.replace('_', ' ')}
+              label={alert.pattern.replace("_", " ")}
               size="small"
               variant="outlined"
             />
@@ -182,30 +200,44 @@ interface AlertDetailsDialogProps {
   onResolve: (alert: Alert, note?: string) => void;
 }
 
-const AlertDetailsDialog: React.FC<AlertDetailsDialogProps> = ({ alert, open, onClose, onResolve }) => {
+const AlertDetailsDialog: React.FC<AlertDetailsDialogProps> = ({
+  alert,
+  open,
+  onClose,
+  onResolve,
+}) => {
   const theme = useTheme();
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState("");
 
   const handleResolve = () => {
     if (alert) {
       onResolve(alert, note);
       onClose();
-      setNote('');
+      setNote("");
     }
   };
 
   if (!alert) return null;
 
-  const severityColor = 
-    alert.severity === 'critical' ? theme.palette.error.main :
-    alert.severity === 'error' ? theme.palette.error.light :
-    alert.severity === 'warning' ? theme.palette.warning.main :
-    theme.palette.info.main;
+  const severityColor =
+    alert.severity === "critical"
+      ? theme.palette.error.main
+      : alert.severity === "error"
+        ? theme.palette.error.light
+        : alert.severity === "warning"
+          ? theme.palette.warning.main
+          : theme.palette.info.main;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Alert Details
           </Typography>
@@ -214,7 +246,7 @@ const AlertDetailsDialog: React.FC<AlertDetailsDialogProps> = ({ alert, open, on
           </IconButton>
         </Box>
       </DialogTitle>
-      
+
       <DialogContent dividers>
         <Box sx={{ mb: 3 }}>
           <Typography variant="caption" color="text.secondary" gutterBottom>
@@ -225,7 +257,7 @@ const AlertDetailsDialog: React.FC<AlertDetailsDialogProps> = ({ alert, open, on
               label={alert.severity.toUpperCase()}
               sx={{
                 backgroundColor: severityColor,
-                color: 'white',
+                color: "white",
                 fontWeight: 600,
               }}
             />
@@ -254,9 +286,7 @@ const AlertDetailsDialog: React.FC<AlertDetailsDialogProps> = ({ alert, open, on
           <Typography variant="caption" color="text.secondary" gutterBottom>
             Message
           </Typography>
-          <Typography variant="body1">
-            {alert.message}
-          </Typography>
+          <Typography variant="body1">{alert.message}</Typography>
         </Box>
 
         {alert.pattern && (
@@ -265,7 +295,7 @@ const AlertDetailsDialog: React.FC<AlertDetailsDialogProps> = ({ alert, open, on
               Error Pattern
             </Typography>
             <Typography variant="body1">
-              {alert.pattern.replace('_', ' ')}
+              {alert.pattern.replace("_", " ")}
             </Typography>
           </Box>
         )}
@@ -280,11 +310,11 @@ const AlertDetailsDialog: React.FC<AlertDetailsDialogProps> = ({ alert, open, on
                 p: 2,
                 backgroundColor: alpha(theme.palette.primary.main, 0.05),
                 borderRadius: 2,
-                fontFamily: 'monospace',
-                fontSize: '0.875rem',
+                fontFamily: "monospace",
+                fontSize: "0.875rem",
               }}
             >
-              <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
                 {JSON.stringify(alert.details, null, 2)}
               </pre>
             </Box>
@@ -306,7 +336,7 @@ const AlertDetailsDialog: React.FC<AlertDetailsDialogProps> = ({ alert, open, on
           />
         </Box>
       </DialogContent>
-      
+
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
         <Button onClick={handleResolve} variant="contained" color="success">
@@ -325,14 +355,16 @@ interface OpenAlertsProps {
 const OpenAlerts: React.FC<OpenAlertsProps> = ({ alerts, onRefresh }) => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [filterSeverity, setFilterSeverity] = useState<AlertSeverity | 'all'>('all');
+  const [filterSeverity, setFilterSeverity] = useState<AlertSeverity | "all">(
+    "all",
+  );
 
   const handleResolve = async (alert: Alert, note?: string) => {
     try {
       await apiService.resolveAlert(alert.id, note);
       onRefresh();
     } catch (error) {
-      console.error('Failed to resolve alert:', error);
+      console.error("Failed to resolve alert:", error);
     }
   };
 
@@ -341,28 +373,39 @@ const OpenAlerts: React.FC<OpenAlertsProps> = ({ alerts, onRefresh }) => {
     setDetailsOpen(true);
   };
 
-  const handleFilterChange = (event: SelectChangeEvent<AlertSeverity | 'all'>) => {
-    setFilterSeverity(event.target.value as AlertSeverity | 'all');
+  const handleFilterChange = (
+    event: SelectChangeEvent<AlertSeverity | "all">,
+  ) => {
+    setFilterSeverity(event.target.value as AlertSeverity | "all");
   };
 
-  const filteredAlerts = filterSeverity === 'all' 
-    ? alerts 
-    : alerts.filter(alert => alert.severity === filterSeverity);
+  const filteredAlerts =
+    filterSeverity === "all"
+      ? alerts
+      : alerts.filter((alert) => alert.severity === filterSeverity);
 
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Box
+        sx={{
+          mb: 4,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <Box>
           <Typography variant="h3" gutterBottom sx={{ fontWeight: 700 }}>
             Open Alerts
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            {filteredAlerts.length} alert{filteredAlerts.length !== 1 ? 's' : ''} requiring attention
+            {filteredAlerts.length} alert
+            {filteredAlerts.length !== 1 ? "s" : ""} requiring attention
           </Typography>
         </Box>
-        
-        <Box sx={{ display: 'flex', gap: 2 }}>
+
+        <Box sx={{ display: "flex", gap: 2 }}>
           <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Filter by Severity</InputLabel>
             <Select
@@ -377,7 +420,7 @@ const OpenAlerts: React.FC<OpenAlertsProps> = ({ alerts, onRefresh }) => {
               <MenuItem value="info">Info</MenuItem>
             </Select>
           </FormControl>
-          
+
           <Tooltip title="Refresh">
             <IconButton onClick={onRefresh} color="primary">
               <Refresh />
@@ -402,16 +445,17 @@ const OpenAlerts: React.FC<OpenAlertsProps> = ({ alerts, onRefresh }) => {
       ) : (
         <Card>
           <CardContent>
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <CheckCircle sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
+            <Box sx={{ textAlign: "center", py: 8 }}>
+              <CheckCircle
+                sx={{ fontSize: 64, color: "success.main", mb: 2 }}
+              />
               <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
                 No Open Alerts
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                {filterSeverity === 'all' 
-                  ? 'Your server is running smoothly. All alerts have been resolved.'
-                  : `No ${filterSeverity} alerts at this time.`
-                }
+                {filterSeverity === "all"
+                  ? "Your server is running smoothly. All alerts have been resolved."
+                  : `No ${filterSeverity} alerts at this time.`}
               </Typography>
             </Box>
           </CardContent>

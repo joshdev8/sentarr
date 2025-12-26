@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -15,17 +15,17 @@ import {
   Chip,
   alpha,
   useTheme,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Save,
   Refresh,
   Email,
   Send,
   Error as ErrorIcon,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
-import { SystemConfig, NotificationChannel } from '../types';
-import { apiService } from '../services/api';
+import { SystemConfig, NotificationChannel } from "../types";
+import { apiService } from "../services/api";
 
 interface NotificationChannelCardProps {
   channel: NotificationChannel;
@@ -33,7 +33,11 @@ interface NotificationChannelCardProps {
   onToggle: (channelId: string, enabled: boolean) => void;
 }
 
-const NotificationChannelCard: React.FC<NotificationChannelCardProps> = ({ channel, onTest, onToggle }) => {
+const NotificationChannelCard: React.FC<NotificationChannelCardProps> = ({
+  channel,
+  onTest,
+  onToggle,
+}) => {
   const theme = useTheme();
 
   const channelIcons: Record<string, JSX.Element> = {
@@ -46,16 +50,23 @@ const NotificationChannelCard: React.FC<NotificationChannelCardProps> = ({ chann
   return (
     <Card>
       <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Box
               sx={{
                 width: 48,
                 height: 48,
                 borderRadius: 2,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 backgroundColor: alpha(theme.palette.primary.main, 0.1),
                 color: theme.palette.primary.main,
               }}
@@ -73,13 +84,13 @@ const NotificationChannelCard: React.FC<NotificationChannelCardProps> = ({ chann
           </Box>
 
           <Chip
-            label={channel.enabled ? 'ENABLED' : 'DISABLED'}
-            color={channel.enabled ? 'success' : 'default'}
+            label={channel.enabled ? "ENABLED" : "DISABLED"}
+            color={channel.enabled ? "success" : "default"}
             size="small"
           />
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
           <FormControlLabel
             control={
               <Switch
@@ -90,7 +101,7 @@ const NotificationChannelCard: React.FC<NotificationChannelCardProps> = ({ chann
             }
             label="Enabled"
           />
-          
+
           <Button
             variant="outlined"
             size="small"
@@ -116,14 +127,18 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
     errorThreshold: 5,
     timeWindowMinutes: 5,
     alertCooldownMinutes: 15,
-    logPath: '/config/Library/Application Support/Plex Media Server/Logs',
+    logPath: "/config/Library/Application Support/Plex Media Server/Logs",
   });
 
   const [channels, setChannels] = useState<NotificationChannel[]>([]);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error";
+  }>({
     open: false,
-    message: '',
-    severity: 'success',
+    message: "",
+    severity: "success",
   });
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -137,7 +152,7 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
       const data = await apiService.getConfig();
       setConfig(data);
     } catch (error) {
-      console.error('Failed to load config:', error);
+      console.error("Failed to load config:", error);
     }
   };
 
@@ -146,7 +161,7 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
       const data = await apiService.getNotificationChannels();
       setChannels(data);
     } catch (error) {
-      console.error('Failed to load channels:', error);
+      console.error("Failed to load channels:", error);
     }
   };
 
@@ -160,16 +175,16 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
       await apiService.updateConfig(config);
       setSnackbar({
         open: true,
-        message: 'Settings saved successfully!',
-        severity: 'success',
+        message: "Settings saved successfully!",
+        severity: "success",
       });
       setHasChanges(false);
       onRefresh();
     } catch (error) {
       setSnackbar({
         open: true,
-        message: 'Failed to save settings',
-        severity: 'error',
+        message: "Failed to save settings",
+        severity: "error",
       });
     }
   };
@@ -177,17 +192,19 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
   const handleChannelToggle = async (channelId: string, enabled: boolean) => {
     try {
       await apiService.updateNotificationChannel(channelId, { enabled });
-      setChannels(channels.map(ch => ch.id === channelId ? { ...ch, enabled } : ch));
+      setChannels(
+        channels.map((ch) => (ch.id === channelId ? { ...ch, enabled } : ch)),
+      );
       setSnackbar({
         open: true,
-        message: `Channel ${enabled ? 'enabled' : 'disabled'} successfully`,
-        severity: 'success',
+        message: `Channel ${enabled ? "enabled" : "disabled"} successfully`,
+        severity: "success",
       });
     } catch (error) {
       setSnackbar({
         open: true,
-        message: 'Failed to update channel',
-        severity: 'error',
+        message: "Failed to update channel",
+        severity: "error",
       });
     }
   };
@@ -198,13 +215,13 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
       setSnackbar({
         open: true,
         message: result.message,
-        severity: result.success ? 'success' : 'error',
+        severity: result.success ? "success" : "error",
       });
     } catch (error) {
       setSnackbar({
         open: true,
-        message: 'Test notification failed',
-        severity: 'error',
+        message: "Test notification failed",
+        severity: "error",
       });
     }
   };
@@ -212,7 +229,14 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Box
+        sx={{
+          mb: 4,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <Box>
           <Typography variant="h3" gutterBottom sx={{ fontWeight: 700 }}>
             Settings
@@ -222,7 +246,7 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: "flex", gap: 2 }}>
           <Button
             variant="outlined"
             startIcon={<Refresh />}
@@ -233,7 +257,7 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
           >
             Refresh
           </Button>
-          
+
           <Button
             variant="contained"
             startIcon={<Save />}
@@ -258,13 +282,20 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
                 control={
                   <Switch
                     checked={config.monitorErrors}
-                    onChange={(e) => handleConfigChange('monitorErrors', e.target.checked)}
+                    onChange={(e) =>
+                      handleConfigChange("monitorErrors", e.target.checked)
+                    }
                     color="primary"
                   />
                 }
                 label="Monitor Errors"
               />
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ ml: 6 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ ml: 6 }}
+              >
                 Track error-level log entries
               </Typography>
             </Grid>
@@ -274,13 +305,20 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
                 control={
                   <Switch
                     checked={config.monitorWarnings}
-                    onChange={(e) => handleConfigChange('monitorWarnings', e.target.checked)}
+                    onChange={(e) =>
+                      handleConfigChange("monitorWarnings", e.target.checked)
+                    }
                     color="primary"
                   />
                 }
                 label="Monitor Warnings"
               />
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ ml: 6 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ ml: 6 }}
+              >
                 Track warning-level log entries
               </Typography>
             </Grid>
@@ -295,7 +333,9 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
                 label="Error Threshold"
                 type="number"
                 value={config.errorThreshold}
-                onChange={(e) => handleConfigChange('errorThreshold', parseInt(e.target.value))}
+                onChange={(e) =>
+                  handleConfigChange("errorThreshold", parseInt(e.target.value))
+                }
                 helperText="Number of errors before alerting"
               />
             </Grid>
@@ -306,7 +346,12 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
                 label="Time Window (minutes)"
                 type="number"
                 value={config.timeWindowMinutes}
-                onChange={(e) => handleConfigChange('timeWindowMinutes', parseInt(e.target.value))}
+                onChange={(e) =>
+                  handleConfigChange(
+                    "timeWindowMinutes",
+                    parseInt(e.target.value),
+                  )
+                }
                 helperText="Period to count errors"
               />
             </Grid>
@@ -317,7 +362,12 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
                 label="Alert Cooldown (minutes)"
                 type="number"
                 value={config.alertCooldownMinutes}
-                onChange={(e) => handleConfigChange('alertCooldownMinutes', parseInt(e.target.value))}
+                onChange={(e) =>
+                  handleConfigChange(
+                    "alertCooldownMinutes",
+                    parseInt(e.target.value),
+                  )
+                }
                 helperText="Minimum time between similar alerts"
               />
             </Grid>
@@ -327,7 +377,7 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
                 fullWidth
                 label="Plex Log Path"
                 value={config.logPath}
-                onChange={(e) => handleConfigChange('logPath', e.target.value)}
+                onChange={(e) => handleConfigChange("logPath", e.target.value)}
                 helperText="Path to Plex Media Server logs"
                 disabled
               />
@@ -356,8 +406,15 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
       {channels.length === 0 && (
         <Card>
           <CardContent>
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <ErrorIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+            <Box sx={{ textAlign: "center", py: 4 }}>
+              <ErrorIcon
+                sx={{
+                  fontSize: 48,
+                  color: "text.secondary",
+                  mb: 2,
+                  opacity: 0.5,
+                }}
+              />
               <Typography variant="h6" gutterBottom>
                 No Notification Channels Configured
               </Typography>
@@ -374,12 +431,12 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
         <MuiAlert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
           variant="filled"
         >
           {snackbar.message}
