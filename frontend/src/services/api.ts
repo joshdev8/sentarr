@@ -1,7 +1,9 @@
 /// <reference types="vite/client" />
 import { Alert, AlertsResponse, Stats, SystemConfig, NotificationChannel } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// In production, use relative URL so nginx proxies to the API
+// In development, Vite proxy handles /api -> localhost:5000
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 class ApiService {
   private async fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {
