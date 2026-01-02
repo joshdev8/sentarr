@@ -43,6 +43,9 @@
 ### Live Log Viewer
 <img src="docs/screenshots/log-viewer.png" alt="Log Viewer" width="800"/>
 
+### Live Host Monitoring
+<img src="docs/screenshots/host-monitoring.png" alt="Host Monitoring" width="800"/>
+
 *Real-time Plex log monitoring with filtering and search*
 
 </div>
