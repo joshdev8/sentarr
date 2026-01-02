@@ -43,18 +43,20 @@
 ### Live Log Viewer
 <img src="docs/screenshots/log-viewer.png" alt="Log Viewer" width="800"/>
 
+*Real-time Plex log monitoring with filtering and search*
+
 ### Live Host Monitoring
 <img src="docs/screenshots/host-monitoring.png" alt="Host Monitoring" width="800"/>
 
-*Real-time Plex log monitoring with filtering and search*
+*Real-time Plex host resource monitoring*
 
 </div>
 
 ---
 
-## ✨ Features
+## Features
 
-### 🎯 Comprehensive Monitoring
+### Comprehensive Monitoring
 - **Real-time Log Analysis** - Tails Plex logs and detects issues instantly
 - **Plex API Integration** - Direct connection to your Plex server for enhanced monitoring
 - **Active Stream Tracking** - Monitor who's watching what in real-time
@@ -67,14 +69,14 @@
   - Disk I/O errors
   - Transcoding failures
 
-### 📊 Beautiful Web Dashboard
+### Beautiful Web Dashboard
 - **Modern React UI** - Built with TypeScript, Vite, and Material-UI
 - **Real-time Updates** - Live data refresh every 5 seconds
 - **Mobile Responsive** - Works perfectly on phones and tablets
 - **Dark Theme** - Easy on the eyes for 24/7 monitoring
 - **Interactive Charts** - Visualize error trends and system health
 
-### 🔔 Multi-Channel Alerts
+### Multi-Channel Alerts
 - **Email (SMTP)** - Traditional email notifications
 - **Discord** - Webhook integration with rich embeds
 - **Slack** - Team notifications with customizable formatting
@@ -82,7 +84,7 @@
 - **Smart Throttling** - Configurable cooldown to prevent alert spam
 - **Threshold-based** - Only alert when error count exceeds your threshold
 
-### 🐳 Easy Deployment
+### Easy Deployment
 - **Single Container** - Everything in one Docker container (like other *arr apps)
 - **Minimal Resources** - Uses ~256-512MB RAM, <5% CPU
 - **Works with Portainer** - One-click deployment
@@ -91,7 +93,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Using Docker Compose (Recommended)
 
@@ -173,7 +175,7 @@ docker run -d \
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 ### Required Settings
 
@@ -240,7 +242,7 @@ See [PLEX_API_SETUP.md](PLEX_API_SETUP.md) for Home Assistant automation example
 
 ---
 
-## 📖 Documentation
+## Documentation
 
 - **[Plex API Setup](PLEX_API_SETUP.md)** - How to get your Plex token and configure API
 - **[Docker Compose Examples](DOCKER_COMPOSE_EXAMPLES.md)** - Various deployment scenarios
@@ -248,7 +250,7 @@ See [PLEX_API_SETUP.md](PLEX_API_SETUP.md) for Home Assistant automation example
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────┐
@@ -275,7 +277,7 @@ See [PLEX_API_SETUP.md](PLEX_API_SETUP.md) for Home Assistant automation example
 
 ---
 
-## 🎯 Use Cases
+## Use Cases
 
 ### Home Media Server
 Monitor your personal Plex server and get alerted when:
@@ -300,7 +302,7 @@ Proactive support for your users:
 
 ---
 
-## 🆚 Comparison with Tautulli
+## Comparison with Tautulli
 
 | Feature | Sentarr | Tautulli |
 |---------|---------|----------|
@@ -317,7 +319,7 @@ Proactive support for your users:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Here's how:
 
@@ -347,7 +349,7 @@ npm run dev
 
 ---
 
-## 📊 Stats
+## Stats
 
 - **Single Container** - Like other *arr apps
 - **Minimal Resources** - 256-512MB RAM, <5% CPU
@@ -357,7 +359,7 @@ npm run dev
 
 ---
 
-## 💡 Tips & Tricks
+## Tips & Tricks
 
 ### Finding Your Plex Log Path
 
@@ -395,7 +397,7 @@ networks:
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 <details>
 <summary><b>Dashboard won't load</b></summary>
@@ -432,13 +434,13 @@ docker restart sentarr
 
 ---
 
-## 📜 License
+## License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Inspired by the amazing **[*arr ecosystem](https://wiki.servarr.com/)** (Radarr, Sonarr, etc.)
 - Built with **[React](https://react.dev/)**, **[Material-UI](https://mui.com/)**, and **[Flask](https://flask.palletsprojects.com/)**
@@ -446,18 +448,12 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ---
 
-## 🔗 Links
+## Links
 
 - **GitHub:** [github.com/joshdev8/sentarr](https://github.com/joshdev8/sentarr)
 - **Docker Hub:** [hub.docker.com/r/joshdev8/sentarr](https://hub.docker.com/r/joshdev8/sentarr)
 - **Issues:** [github.com/joshdev8/sentarr/issues](https://github.com/joshdev8/sentarr/issues)
 - **Discussions:** [github.com/joshdev8/sentarr/discussions](https://github.com/joshdev8/sentarr/discussions)
-
----
-
-## ⭐ Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=joshdev8/sentarr&type=Date)](https://star-history.com/#joshdev8/sentarr&Date)
 
 ---
 
