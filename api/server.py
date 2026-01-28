@@ -15,6 +15,12 @@ from flask_cors import CORS
 import uuid
 from pathlib import Path
 from collections import deque
+import logging
+
+# Configure basic logging for this module
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
 
 # Try to import plexapi
 try:
@@ -1079,7 +1085,8 @@ def test_notification_channel(channel_id: str):
             return jsonify({'success': False, 'message': f'Unknown channel: {channel_id}'})
     
     except Exception as e:
-        return jsonify({'success': False, 'message': f'Test failed: {str(e)}'})
+        logger.exception("Error while testing notification channel '%s'", channel_id)
+        return jsonify({'success': False, 'message': 'Test failed due to an internal error'})
 
 
 # ============================================
