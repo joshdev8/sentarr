@@ -94,6 +94,7 @@ export interface SystemConfig {
   timeWindowMinutes: number;
   alertCooldownMinutes: number;
   logPath: string;
+  temperatureUnit?: "C" | "F";
   notifications: NotificationsConfig;
 }
 
@@ -290,6 +291,7 @@ export interface DiskInfo {
   used: number;
   free: number;
   percent: number;
+  type?: "internal" | "external" | "network";
 }
 
 export interface NetworkInterface {
@@ -325,6 +327,8 @@ export interface MetricsHistoryPoint {
   recv?: number;
   read?: number;
   write?: number;
+  cpu?: number;
+  memory?: number;
 }
 
 export interface HostMetrics {
@@ -360,6 +364,7 @@ export interface HostMetrics {
     percent: number;
   };
   disks: DiskInfo[];
+  externalDisks?: DiskInfo[];
   diskIO?: {
     readBytes: number;
     writeBytes: number;
@@ -389,6 +394,8 @@ export interface HostMetrics {
     memory: MetricsHistoryPoint[];
     network: MetricsHistoryPoint[];
     diskIO: MetricsHistoryPoint[];
+    interfaces?: { [key: string]: MetricsHistoryPoint[] };
+    processes?: { [key: string]: MetricsHistoryPoint[] };
   };
   updatedAt?: string;
 }

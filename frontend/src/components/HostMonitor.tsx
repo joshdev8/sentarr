@@ -19,6 +19,10 @@ import {
   TableRow,
   Paper,
   Skeleton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import {
   Refresh,
@@ -32,6 +36,8 @@ import {
   NetworkCheck,
   DeveloperBoard,
   Circle,
+  Usb,
+  Cloud,
 } from "@mui/icons-material";
 import {
   AreaChart,
@@ -46,13 +52,16 @@ import {
   Legend,
 } from "recharts";
 
-import { HostMetrics } from "../types";
+import { HostMetrics, SystemConfig } from "../types";
 import { apiService } from "../services/api";
 
 const HostMonitor: React.FC = () => {
   const theme = useTheme();
   const [metrics, setMetrics] = useState<HostMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [temperatureUnit, setTemperatureUnit] = useState<"C" | "F">("C");
+  const [selectedInterface, setSelectedInterface] = useState<string>("");
+  const [selectedProcess, setSelectedProcess] = useState<string>("");
 
   const fetchMetrics = async () => {
     try {
@@ -65,11 +74,36 @@ const HostMonitor: React.FC = () => {
     }
   };
 
+  const fetchConfig = async () => {
+    try {
+      const config: SystemConfig = await apiService.getConfig();
+      if (config.temperatureUnit) {
+        setTemperatureUnit(config.temperatureUnit);
+      }
+    } catch (error) {
+      console.error("Failed to fetch config:", error);
+    }
+  };
+
   useEffect(() => {
+    fetchConfig();
     fetchMetrics();
     const interval = setInterval(fetchMetrics, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Temperature conversion helper
+  const convertTemp = (celsius: number): number => {
+    if (temperatureUnit === "F") {
+      return (celsius * 9) / 5 + 32;
+    }
+    return celsius;
+  };
+
+  const formatTemp = (celsius: number): string => {
+    const temp = convertTemp(celsius);
+    return `${temp.toFixed(0)}°${temperatureUnit}`;
+  };
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return "0 B";
@@ -140,6 +174,15 @@ const HostMonitor: React.FC = () => {
     }),
     sent: (point.sent || 0) / 1024, // KB/s
     recv: (point.recv || 0) / 1024,
+  }));
+
+  const diskIOHistoryData = metrics.history.diskIO.map((point) => ({
+    time: new Date(point.time).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    read: (point.read || 0) / (1024 * 1024), // MB/s
+    write: (point.write || 0) / (1024 * 1024),
   }));
 
   return (
@@ -694,6 +737,136 @@ const HostMonitor: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* Memory Composition Breakdown */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                Memory Composition
+              </Typography>
+
+              {/* Stacked bar showing memory breakdown */}
+              <Box sx={{ mb: 2 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    height: 32,
+                    borderRadius: 2,
+                    overflow: "hidden",
+                    backgroundColor: alpha(theme.palette.divider, 0.2),
+                  }}
+                >
+                  {/* Active/Used (excluding cached and buffers) */}
+                  <Tooltip
+                    title={`Active: ${formatBytes(metrics.memory.used - metrics.memory.cached - metrics.memory.buffers)}`}
+                  >
+                    <Box
+                      sx={{
+                        width: `${((metrics.memory.used - metrics.memory.cached - metrics.memory.buffers) / metrics.memory.total) * 100}%`,
+                        backgroundColor: theme.palette.error.main,
+                        transition: "width 0.3s ease",
+                      }}
+                    />
+                  </Tooltip>
+                  {/* Cached */}
+                  <Tooltip title={`Cached: ${formatBytes(metrics.memory.cached)}`}>
+                    <Box
+                      sx={{
+                        width: `${(metrics.memory.cached / metrics.memory.total) * 100}%`,
+                        backgroundColor: theme.palette.warning.main,
+                        transition: "width 0.3s ease",
+                      }}
+                    />
+                  </Tooltip>
+                  {/* Buffers */}
+                  <Tooltip title={`Buffers: ${formatBytes(metrics.memory.buffers)}`}>
+                    <Box
+                      sx={{
+                        width: `${(metrics.memory.buffers / metrics.memory.total) * 100}%`,
+                        backgroundColor: theme.palette.info.main,
+                        transition: "width 0.3s ease",
+                      }}
+                    />
+                  </Tooltip>
+                  {/* Free */}
+                  <Tooltip title={`Free: ${formatBytes(metrics.memory.free)}`}>
+                    <Box
+                      sx={{
+                        width: `${(metrics.memory.free / metrics.memory.total) * 100}%`,
+                        backgroundColor: theme.palette.success.main,
+                        transition: "width 0.3s ease",
+                      }}
+                    />
+                  </Tooltip>
+                </Box>
+              </Box>
+
+              {/* Legend */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: { xs: 1, sm: 2 },
+                  justifyContent: "center",
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 1,
+                      backgroundColor: theme.palette.error.main,
+                    }}
+                  />
+                  <Typography variant="caption">
+                    Active ({formatBytes(metrics.memory.used - metrics.memory.cached - metrics.memory.buffers)})
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 1,
+                      backgroundColor: theme.palette.warning.main,
+                    }}
+                  />
+                  <Typography variant="caption">
+                    Cached ({formatBytes(metrics.memory.cached)})
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 1,
+                      backgroundColor: theme.palette.info.main,
+                    }}
+                  />
+                  <Typography variant="caption">
+                    Buffers ({formatBytes(metrics.memory.buffers)})
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 1,
+                      backgroundColor: theme.palette.success.main,
+                    }}
+                  />
+                  <Typography variant="caption">
+                    Free ({formatBytes(metrics.memory.free)})
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
 
       {/* Storage Section */}
@@ -803,6 +976,204 @@ const HostMonitor: React.FC = () => {
           </Grid>
         ))}
       </Grid>
+
+      {/* Disk I/O Chart */}
+      {diskIOHistoryData.length > 0 && (
+        <Grid
+          container
+          spacing={{ xs: 1.5, sm: 2, md: 3 }}
+          sx={{ mb: { xs: 2, sm: 4 } }}
+        >
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                  Disk I/O Over Time
+                </Typography>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={diskIOHistoryData}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={alpha(theme.palette.text.primary, 0.1)}
+                    />
+                    <XAxis
+                      dataKey="time"
+                      stroke={theme.palette.text.secondary}
+                      style={{ fontSize: "10px" }}
+                    />
+                    <YAxis
+                      stroke={theme.palette.text.secondary}
+                      style={{ fontSize: "10px" }}
+                    />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: theme.palette.background.paper,
+                        border: `1px solid ${theme.palette.divider}`,
+                        borderRadius: 8,
+                      }}
+                      formatter={(value: number) => [`${value.toFixed(2)} MB/s`]}
+                    />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="read"
+                      name="Read"
+                      stroke={theme.palette.info.main}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="write"
+                      name="Write"
+                      stroke={theme.palette.warning.main}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* External & Network Storage Section */}
+      {metrics.externalDisks && metrics.externalDisks.length > 0 && (
+        <>
+          <Typography
+            variant="h5"
+            gutterBottom
+            sx={{
+              fontWeight: 600,
+              mb: { xs: 1, sm: 2 },
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              fontSize: { xs: "1.1rem", sm: "1.5rem" },
+            }}
+          >
+            <Usb sx={{ color: "warning.main" }} /> External & Network Storage
+          </Typography>
+
+          <Grid
+            container
+            spacing={{ xs: 1.5, sm: 2, md: 3 }}
+            sx={{ mb: { xs: 2, sm: 4 } }}
+          >
+            {metrics.externalDisks.map((disk) => (
+              <Grid item xs={12} md={6} lg={4} key={disk.mountpoint}>
+                <Card>
+                  <CardContent>
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}
+                    >
+                      {disk.type === "network" ? (
+                        <Cloud sx={{ color: theme.palette.info.main }} />
+                      ) : (
+                        <Usb sx={{ color: theme.palette.warning.main }} />
+                      )}
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography
+                          variant="subtitle1"
+                          fontWeight={600}
+                          noWrap
+                          title={disk.mountpoint}
+                        >
+                          {disk.mountpoint}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          noWrap
+                          title={disk.device}
+                        >
+                          {disk.device} • {disk.fstype}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.5 }}>
+                        <Chip
+                          label={disk.type === "network" ? "Network" : "External"}
+                          size="small"
+                          sx={{
+                            backgroundColor: alpha(
+                              disk.type === "network"
+                                ? theme.palette.info.main
+                                : theme.palette.warning.main,
+                              0.1,
+                            ),
+                            color:
+                              disk.type === "network"
+                                ? theme.palette.info.main
+                                : theme.palette.warning.main,
+                            fontWeight: 600,
+                            fontSize: "0.65rem",
+                            height: 20,
+                          }}
+                        />
+                        <Chip
+                          label={`${disk.percent.toFixed(0)}%`}
+                          size="small"
+                          sx={{
+                            backgroundColor: alpha(
+                              getColorByPercent(disk.percent),
+                              0.1,
+                            ),
+                            color: getColorByPercent(disk.percent),
+                            fontWeight: 600,
+                          }}
+                        />
+                      </Box>
+                    </Box>
+
+                    <LinearProgress
+                      variant="determinate"
+                      value={disk.percent}
+                      sx={{
+                        height: 16,
+                        borderRadius: 8,
+                        mb: 2,
+                        backgroundColor: alpha(theme.palette.warning.main, 0.1),
+                        "& .MuiLinearProgress-bar": {
+                          backgroundColor: getColorByPercent(disk.percent),
+                          borderRadius: 8,
+                        },
+                      }}
+                    />
+
+                    <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                      <Box sx={{ textAlign: "center" }}>
+                        <Typography variant="body1" fontWeight={600}>
+                          {formatBytes(disk.used)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Used
+                        </Typography>
+                      </Box>
+                      <Box sx={{ textAlign: "center" }}>
+                        <Typography variant="body1" fontWeight={600}>
+                          {formatBytes(disk.free)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Free
+                        </Typography>
+                      </Box>
+                      <Box sx={{ textAlign: "center" }}>
+                        <Typography variant="body1" fontWeight={600}>
+                          {formatBytes(disk.total)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Total
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </>
+      )}
 
       {/* Network Section */}
       <Typography
@@ -952,6 +1323,86 @@ const HostMonitor: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* Per-Interface Network Chart */}
+        {metrics.history.interfaces && Object.keys(metrics.history.interfaces).length > 0 && (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Per-Interface Traffic
+                  </Typography>
+                  <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <InputLabel>Interface</InputLabel>
+                    <Select
+                      value={selectedInterface || Object.keys(metrics.history.interfaces)[0] || ""}
+                      label="Interface"
+                      onChange={(e) => setSelectedInterface(e.target.value)}
+                    >
+                      {Object.keys(metrics.history.interfaces).map((iface) => (
+                        <MenuItem key={iface} value={iface}>
+                          {iface}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart
+                    data={(metrics.history.interfaces[selectedInterface || Object.keys(metrics.history.interfaces)[0]] || []).map((point) => ({
+                      time: new Date(point.time).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }),
+                      sent: (point.sent || 0) / 1024, // KB/s
+                      recv: (point.recv || 0) / 1024,
+                    }))}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={alpha(theme.palette.text.primary, 0.1)}
+                    />
+                    <XAxis
+                      dataKey="time"
+                      stroke={theme.palette.text.secondary}
+                      style={{ fontSize: "10px" }}
+                    />
+                    <YAxis
+                      stroke={theme.palette.text.secondary}
+                      style={{ fontSize: "10px" }}
+                    />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: theme.palette.background.paper,
+                        border: `1px solid ${theme.palette.divider}`,
+                        borderRadius: 8,
+                      }}
+                      formatter={(value: number) => [`${value.toFixed(1)} KB/s`]}
+                    />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="sent"
+                      name="Upload"
+                      stroke={theme.palette.success.main}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="recv"
+                      name="Download"
+                      stroke={theme.palette.info.main}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
       </Grid>
 
       {/* Processes & Temperature */}
@@ -1095,14 +1546,14 @@ const HostMonitor: React.FC = () => {
                                   : theme.palette.success.main,
                           }}
                         >
-                          {temp.current.toFixed(0)}°C
+                          {formatTemp(temp.current)}
                         </Typography>
                       </Box>
                       {(temp.high || temp.critical) && (
                         <Typography variant="caption" color="text.secondary">
-                          {temp.high && `High: ${temp.high}°C`}
+                          {temp.high && `High: ${formatTemp(temp.high)}`}
                           {temp.high && temp.critical && " • "}
-                          {temp.critical && `Critical: ${temp.critical}°C`}
+                          {temp.critical && `Critical: ${formatTemp(temp.critical)}`}
                         </Typography>
                       )}
                     </Paper>
@@ -1126,6 +1577,99 @@ const HostMonitor: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* Process Trends Chart */}
+        {metrics.history.processes && Object.keys(metrics.history.processes).length > 0 && (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Process Resource Trends
+                  </Typography>
+                  <FormControl size="small" sx={{ minWidth: 200 }}>
+                    <InputLabel>Process</InputLabel>
+                    <Select
+                      value={selectedProcess || Object.keys(metrics.history.processes)[0] || ""}
+                      label="Process"
+                      onChange={(e) => setSelectedProcess(e.target.value)}
+                    >
+                      {Object.keys(metrics.history.processes)
+                        .sort((a, b) => {
+                          // Sort by most recent CPU usage
+                          const aHistory = metrics.history.processes![a];
+                          const bHistory = metrics.history.processes![b];
+                          const aLast = aHistory[aHistory.length - 1]?.cpu || 0;
+                          const bLast = bHistory[bHistory.length - 1]?.cpu || 0;
+                          return bLast - aLast;
+                        })
+                        .slice(0, 20) // Limit to top 20 processes
+                        .map((proc) => (
+                          <MenuItem key={proc} value={proc}>
+                            {proc}
+                          </MenuItem>
+                        ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart
+                    data={(metrics.history.processes[selectedProcess || Object.keys(metrics.history.processes)[0]] || []).map((point) => ({
+                      time: new Date(point.time).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }),
+                      cpu: point.cpu || 0,
+                      memory: point.memory || 0,
+                    }))}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={alpha(theme.palette.text.primary, 0.1)}
+                    />
+                    <XAxis
+                      dataKey="time"
+                      stroke={theme.palette.text.secondary}
+                      style={{ fontSize: "10px" }}
+                    />
+                    <YAxis
+                      stroke={theme.palette.text.secondary}
+                      style={{ fontSize: "10px" }}
+                    />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: theme.palette.background.paper,
+                        border: `1px solid ${theme.palette.divider}`,
+                        borderRadius: 8,
+                      }}
+                      formatter={(value: number, name: string) => [
+                        `${value.toFixed(1)}%`,
+                        name === "cpu" ? "CPU" : "Memory",
+                      ]}
+                    />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="cpu"
+                      name="CPU"
+                      stroke={theme.palette.primary.main}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="memory"
+                      name="Memory"
+                      stroke={theme.palette.secondary.main}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
       </Grid>
 
       {/* System Info */}
