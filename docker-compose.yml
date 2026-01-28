@@ -4,7 +4,7 @@ services:
   sentarr:
     build:
       context: .
-      dockerfile: Dockerfile.unified
+      dockerfile: Dockerfile
     container_name: sentarr
     restart: unless-stopped
     

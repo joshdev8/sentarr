@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Development
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.env*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.pytest_cache/
+.coverage
+
+# Node (frontend builds inside container)
+frontend/node_modules/
+frontend/dist/
+
+# Docker
+.dockerignore
+docker-compose*.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
+CLAUDE.md
