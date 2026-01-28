@@ -10,6 +10,11 @@ RUN npm run build
 # Final stage - Python with everything
 FROM python:3.11-slim
 
+# OCI labels
+LABEL org.opencontainers.image.source="https://github.com/joshdev8/sentarr"
+LABEL org.opencontainers.image.description="Plex Media Server monitoring dashboard"
+LABEL org.opencontainers.image.licenses="MIT"
+
 # Install Node.js for serving frontend and nginx for reverse proxy
 RUN apt-get update && apt-get install -y \
     nginx \

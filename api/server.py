@@ -63,6 +63,7 @@ DEFAULT_CONFIG = {
     'timeWindowMinutes': 5,
     'alertCooldownMinutes': 15,
     'logPath': LOG_PATH,
+    'temperatureUnit': 'C',  # 'C' for Celsius, 'F' for Fahrenheit
     'notifications': {
         'email': {
             'enabled': os.getenv('EMAIL_ENABLED', 'false').lower() == 'true',
@@ -525,35 +526,40 @@ metrics_history = {
     'network': deque(maxlen=60),
     'disk_io': deque(maxlen=60),
 }
+# Per-interface network history
+interface_history = {}  # Dict of interface_name -> deque of data points
+# Process history tracking
+process_history = {}  # Dict of process_name -> deque of {time, cpu, memory} points
 last_network_io = None
+last_network_io_per_iface = {}  # Dict of interface_name -> last counters
 last_disk_io = None
 last_io_time = None
 
 
 def collect_metrics_snapshot():
     """Collect a snapshot of current metrics for history"""
-    global last_network_io, last_disk_io, last_io_time
-    
+    global last_network_io, last_disk_io, last_io_time, last_network_io_per_iface
+
     timestamp = datetime.utcnow().isoformat() + 'Z'
-    
+
     # CPU
     cpu_percent = psutil.cpu_percent(interval=0.1)
     metrics_history['cpu'].append({
         'time': timestamp,
         'value': cpu_percent
     })
-    
+
     # Memory
     memory = psutil.virtual_memory()
     metrics_history['memory'].append({
         'time': timestamp,
         'value': memory.percent
     })
-    
+
     # Network I/O (calculate rates)
     current_net = psutil.net_io_counters()
     current_time = time.time()
-    
+
     if last_network_io and last_io_time:
         time_diff = current_time - last_io_time
         if time_diff > 0:
@@ -564,9 +570,34 @@ def collect_metrics_snapshot():
                 'sent': bytes_sent_rate,
                 'recv': bytes_recv_rate
             })
-    
+
     last_network_io = current_net
-    
+
+    # Per-interface network I/O tracking
+    current_net_per_iface = psutil.net_io_counters(pernic=True)
+    for iface, counters in current_net_per_iface.items():
+        # Skip loopback and virtual interfaces
+        if iface.startswith('lo') or iface.startswith('veth') or iface.startswith('docker') or iface.startswith('br-'):
+            continue
+
+        # Initialize history deque if not exists
+        if iface not in interface_history:
+            interface_history[iface] = deque(maxlen=60)
+
+        if iface in last_network_io_per_iface and last_io_time:
+            time_diff = current_time - last_io_time
+            if time_diff > 0:
+                last_counters = last_network_io_per_iface[iface]
+                bytes_sent_rate = (counters.bytes_sent - last_counters.bytes_sent) / time_diff
+                bytes_recv_rate = (counters.bytes_recv - last_counters.bytes_recv) / time_diff
+                interface_history[iface].append({
+                    'time': timestamp,
+                    'sent': bytes_sent_rate,
+                    'recv': bytes_recv_rate
+                })
+
+        last_network_io_per_iface[iface] = counters
+
     # Disk I/O
     try:
         current_disk_io = psutil.disk_io_counters()
@@ -583,7 +614,27 @@ def collect_metrics_snapshot():
         last_disk_io = current_disk_io
     except:
         pass
-    
+
+    # Track top processes over time
+    try:
+        for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
+            try:
+                pinfo = proc.info
+                # Only track processes with notable resource usage
+                if pinfo['cpu_percent'] > 0.5 or pinfo['memory_percent'] > 0.5:
+                    proc_name = pinfo['name']
+                    if proc_name not in process_history:
+                        process_history[proc_name] = deque(maxlen=60)
+                    process_history[proc_name].append({
+                        'time': timestamp,
+                        'cpu': round(pinfo['cpu_percent'], 1),
+                        'memory': round(pinfo['memory_percent'], 1)
+                    })
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+    except:
+        pass
+
     last_io_time = current_time
 
 
@@ -641,13 +692,51 @@ def get_host_metrics():
         memory = psutil.virtual_memory()
         swap = psutil.swap_memory()
         
-        # All disk partitions
+        # All disk partitions - classify as internal, external, or network
         disks = []
-        partitions = psutil.disk_partitions(all=False)
+        external_disks = []
+
+        # Pseudo filesystems to exclude
+        pseudo_fs = {'proc', 'sysfs', 'tmpfs', 'devtmpfs', 'devfs', 'overlay',
+                     'squashfs', 'cgroup', 'cgroup2', 'autofs', 'securityfs',
+                     'debugfs', 'configfs', 'fusectl', 'pstore', 'efivarfs',
+                     'bpf', 'tracefs', 'hugetlbfs', 'mqueue', 'fuse.gvfsd-fuse'}
+
+        # Network filesystem types
+        network_fs = {'nfs', 'nfs4', 'cifs', 'smbfs', 'sshfs', 'fuse.sshfs', 'glusterfs', 'afs'}
+
+        partitions = psutil.disk_partitions(all=True)
         for partition in partitions:
+            # Skip pseudo filesystems
+            if partition.fstype.lower() in pseudo_fs:
+                continue
+            # Skip docker/container overlay mounts
+            if 'docker' in partition.mountpoint or '/var/lib/docker' in partition.mountpoint:
+                continue
+            # Skip snap mounts
+            if '/snap/' in partition.mountpoint:
+                continue
+
             try:
                 usage = psutil.disk_usage(partition.mountpoint)
-                disks.append({
+
+                # Classify drive type
+                drive_type = 'internal'
+                fstype_lower = partition.fstype.lower()
+                device_lower = partition.device.lower()
+                mount_lower = partition.mountpoint.lower()
+
+                # Network drives
+                if fstype_lower in network_fs:
+                    drive_type = 'network'
+                # External drives - USB/media mounts
+                elif any(x in mount_lower for x in ['/media/', '/mnt/usb', '/run/media/']):
+                    drive_type = 'external'
+                elif any(x in device_lower for x in ['usb', 'sd'] if 'sda' not in device_lower and 'sdb' not in device_lower[:5]):
+                    # Try to detect USB devices but avoid marking primary drives
+                    pass  # Keep as internal unless we're more sure
+
+                disk_info = {
                     'device': partition.device,
                     'mountpoint': partition.mountpoint,
                     'fstype': partition.fstype,
@@ -655,7 +744,14 @@ def get_host_metrics():
                     'used': usage.used,
                     'free': usage.free,
                     'percent': usage.percent,
-                })
+                    'type': drive_type,
+                }
+
+                if drive_type in ('external', 'network'):
+                    external_disks.append(disk_info)
+                else:
+                    disks.append(disk_info)
+
             except (PermissionError, OSError):
                 continue
         
@@ -778,6 +874,7 @@ def get_host_metrics():
                 'percent': swap.percent,
             },
             'disks': disks,
+            'externalDisks': external_disks,
             'diskIO': disk_io,
             'network': {
                 'interfaces': network_interfaces,
@@ -802,6 +899,8 @@ def get_host_metrics():
                 'memory': list(metrics_history['memory']),
                 'network': list(metrics_history['network']),
                 'diskIO': list(metrics_history['disk_io']),
+                'interfaces': {iface: list(history) for iface, history in interface_history.items()},
+                'processes': {name: list(history) for name, history in process_history.items() if len(history) > 2},
             },
             'updatedAt': datetime.utcnow().isoformat() + 'Z'
         })

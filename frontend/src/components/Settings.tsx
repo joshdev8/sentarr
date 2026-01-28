@@ -71,6 +71,7 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
     timeWindowMinutes: 5,
     alertCooldownMinutes: 15,
     logPath: "/logs",
+    temperatureUnit: "C",
     notifications: defaultNotifications,
   });
 
@@ -336,6 +337,45 @@ const Settings: React.FC<SettingsProps> = ({ onRefresh }) => {
                 helperText="Minimum time between similar alerts"
                 inputProps={{ min: 1, max: 120 }}
               />
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Display Settings */}
+      <Card sx={{ mb: { xs: 2, sm: 3 } }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+            Display Settings
+          </Typography>
+
+          <Grid container spacing={{ xs: 2, sm: 3 }}>
+            <Grid item xs={12} md={6}>
+              <Typography variant="body1" sx={{ mb: 1 }}>
+                Temperature Unit
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <Chip
+                  label="Celsius"
+                  color={config.temperatureUnit === "C" ? "primary" : "default"}
+                  onClick={() => handleConfigChange("temperatureUnit", "C")}
+                  sx={{ cursor: "pointer" }}
+                />
+                <Chip
+                  label="Fahrenheit"
+                  color={config.temperatureUnit === "F" ? "primary" : "default"}
+                  onClick={() => handleConfigChange("temperatureUnit", "F")}
+                  sx={{ cursor: "pointer" }}
+                />
+              </Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ mt: 1 }}
+              >
+                Choose how temperatures are displayed in Host Monitor
+              </Typography>
             </Grid>
           </Grid>
         </CardContent>

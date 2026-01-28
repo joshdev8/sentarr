@@ -165,6 +165,17 @@ class AlertManager:
         
         if self.webhook_enabled:
             self._send_webhook(title, message, severity, details)
+
+        # Always POST to local API so alerts appear in dashboard
+        try:
+            requests.post('http://localhost:5000/api/alerts', json={
+                'title': title,
+                'message': message,
+                'severity': severity,
+                'details': details or {}
+            }, timeout=5)
+        except Exception:
+            pass  # Don't fail if API unavailable
     
     def _send_email(self, title: str, message: str, severity: str, details: dict):
         """Send email alert"""
