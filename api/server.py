@@ -16,6 +16,7 @@ import uuid
 from pathlib import Path
 from collections import deque
 import logging
+import traceback
 
 # Configure basic logging for this module
 logger = logging.getLogger(__name__)
@@ -905,8 +906,9 @@ def get_host_metrics():
             'updatedAt': datetime.utcnow().isoformat() + 'Z'
         })
     except Exception as e:
-        import traceback
-        return jsonify({'error': str(e), 'trace': traceback.format_exc()})
+        # Log detailed error and stack trace on the server, but do not expose them to the client
+        logger.error("Error while collecting host metrics: %s\n%s", e, traceback.format_exc())
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 def format_uptime(seconds: int) -> str:
