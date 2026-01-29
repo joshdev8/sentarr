@@ -8,7 +8,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Final stage - Python with everything
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # OCI labels
 LABEL org.opencontainers.image.source="https://github.com/joshdev8/sentarr"

@@ -16,7 +16,6 @@ import uuid
 from pathlib import Path
 from collections import deque
 import logging
-import traceback
 
 # Configure basic logging for this module
 logger = logging.getLogger(__name__)
@@ -194,9 +193,10 @@ def get_plex_status():
             'updatedAt': datetime.utcnow().isoformat() + 'Z'
         })
     except Exception as e:
+        logger.exception("Error retrieving Plex server status")
         return jsonify({
             'connected': False,
-            'error': str(e)
+            'error': 'Failed to retrieve Plex server status'
         })
 
 
@@ -311,9 +311,10 @@ def get_active_streams():
             'updatedAt': datetime.utcnow().isoformat() + 'Z'
         })
     except Exception as e:
+        logger.exception("Error retrieving active streams")
         return jsonify({
             'streams': [],
-            'error': str(e)
+            'error': 'Failed to retrieve active streams'
         })
 
 
@@ -348,7 +349,8 @@ def get_recently_added():
             'updatedAt': datetime.utcnow().isoformat() + 'Z'
         })
     except Exception as e:
-        return jsonify({'items': [], 'error': str(e)})
+        logger.exception("Error retrieving recently added items")
+        return jsonify({'items': [], 'error': 'Failed to retrieve recently added items'})
 
 
 @app.route('/api/plex/on-deck', methods=['GET'])
@@ -383,7 +385,8 @@ def get_on_deck():
             'updatedAt': datetime.utcnow().isoformat() + 'Z'
         })
     except Exception as e:
-        return jsonify({'items': [], 'error': str(e)})
+        logger.exception("Error retrieving on-deck items")
+        return jsonify({'items': [], 'error': 'Failed to retrieve on-deck items'})
 
 
 # ============================================
@@ -449,13 +452,14 @@ def read_recent_logs(num_lines: int = 100) -> List[Dict]:
             })
         
     except Exception as e:
+        logger.exception("Error reading log file")
         logs.append({
             'timestamp': datetime.utcnow().isoformat(),
             'level': 'error',
-            'message': f'Error reading logs: {str(e)}',
+            'message': 'Unable to access log file',
             'source': 'sentarr'
         })
-    
+
     return logs
 
 
@@ -511,8 +515,9 @@ def stream_logs():
                     else:
                         time.sleep(0.5)
         except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
-    
+            logger.exception("Error streaming logs")
+            yield f"data: {json.dumps({'error': 'Log stream connection error'})}\n\n"
+
     return Response(generate(), mimetype='text/event-stream')
 
 
@@ -671,7 +676,8 @@ def get_system_metrics():
             'updatedAt': datetime.utcnow().isoformat() + 'Z'
         })
     except Exception as e:
-        return jsonify({'error': str(e)})
+        logger.exception("Error retrieving system metrics")
+        return jsonify({'error': 'Failed to retrieve system metrics'})
 
 
 @app.route('/api/host/metrics', methods=['GET'])
@@ -906,9 +912,8 @@ def get_host_metrics():
             'updatedAt': datetime.utcnow().isoformat() + 'Z'
         })
     except Exception as e:
-        # Log detailed error and stack trace on the server, but do not expose them to the client
-        logger.error("Error while collecting host metrics: %s\n%s", e, traceback.format_exc())
-        return jsonify({'error': 'Internal server error'}), 500
+        logger.exception("Error retrieving host metrics")
+        return jsonify({'error': 'Failed to retrieve host metrics'})
 
 
 def format_uptime(seconds: int) -> str:
