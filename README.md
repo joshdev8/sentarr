@@ -68,6 +68,32 @@
 - **Dark Theme** - Easy on the eyes for 24/7 monitoring
 - **Interactive Charts** - Visualize error trends and system health
 
+### Advanced Host Monitoring
+- **Per-Core CPU Usage** - Detailed breakdown of each CPU core
+- **Memory Breakdown** - Used, cached, buffers, and swap metrics
+- **Multiple Disk Partitions** - Internal, external, and network drives
+- **Network Interfaces** - Per-interface bandwidth and packet stats
+- **Temperature Sensors** - CPU and component temperatures (Celsius/Fahrenheit)
+- **Top Processes** - Live CPU and memory usage by process
+- **60-Point Historical Charts** - Track trends over time
+
+### Live Log Viewer
+- **SSE-Based Real-time Streaming** - Logs appear instantly as they're written
+- **Pause/Resume Controls** - Freeze the log view when investigating issues
+- **Level Filtering** - Show only errors, warnings, or all levels
+- **Search with Highlighting** - Find specific log entries quickly
+- **Configurable Line Count** - Control how many lines to display
+
+### Media Discovery
+- **Recently Added Carousel** - Browse newly added movies and shows
+- **Continue Watching** - On-deck items with progress bars
+- **Rich Metadata** - Thumbnails, ratings, and summaries
+
+### Alert Management
+- **Resolve with Notes** - Add resolution notes when closing alerts
+- **Resolution History** - Track when and how alerts were resolved
+- **Severity Levels** - Critical, error, and warning classifications
+
 ### Multi-Channel Alerts
 - **Email (SMTP)** - Traditional email notifications
 - **Discord** - Webhook integration with rich embeds
@@ -99,31 +125,78 @@ services:
     image: joshdev8/sentarr:latest
     container_name: sentarr
     restart: unless-stopped
-    
+
     ports:
       - "6500:6500"
-    
+
     volumes:
       # Update this path to your Plex logs
       - /opt/plex/config/Library/Application Support/Plex Media Server/Logs:/logs:ro
-    
+      # Persist configuration
+      - ./config:/config
+
     environment:
-      # Plex API (Recommended)
+      # ============================================
+      # PLEX CONNECTION (Recommended)
+      # ============================================
       - PLEX_API_ENABLED=true
       - PLEX_URL=http://plex:32400
       - PLEX_TOKEN=your-plex-token-here
-      
-      # Log Monitoring
+
+      # ============================================
+      # LOG MONITORING
+      # ============================================
       - PLEX_LOG_PATH=/logs
       - MONITOR_ERRORS=true
+      - MONITOR_WARNINGS=true
+
+      # ============================================
+      # ALERT THRESHOLDS
+      # ============================================
       - ERROR_THRESHOLD=5
-      
-      # Discord Notifications
+      - TIME_WINDOW_MINUTES=5
+      - ALERT_COOLDOWN_MINUTES=15
+
+      # ============================================
+      # DISCORD WEBHOOK
+      # ============================================
       - DISCORD_ENABLED=true
       - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_URL
-    
+
+      # ============================================
+      # EMAIL NOTIFICATIONS (Optional)
+      # ============================================
+      # - EMAIL_ENABLED=false
+      # - SMTP_SERVER=smtp.gmail.com
+      # - SMTP_PORT=587
+      # - SMTP_USER=your-email@gmail.com
+      # - SMTP_PASSWORD=your-app-password
+      # - EMAIL_FROM=sentarr@yourdomain.com
+      # - EMAIL_TO=admin@yourdomain.com
+
+      # ============================================
+      # SLACK WEBHOOK (Optional)
+      # ============================================
+      # - SLACK_ENABLED=false
+      # - SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR_WEBHOOK_URL
+
+      # ============================================
+      # CUSTOM WEBHOOK (Optional)
+      # ============================================
+      # - WEBHOOK_ENABLED=false
+      # - CUSTOM_WEBHOOK_URL=http://homeassistant.local:8123/api/webhook/plex_alert
+
     networks:
       - plex  # Connect to your Plex network
+
+    # Optional: Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
 
 networks:
   plex:
@@ -185,6 +258,13 @@ docker run -d \
 | `TIME_WINDOW_MINUTES` | `5` | Time window to count errors |
 | `ALERT_COOLDOWN_MINUTES` | `15` | Cooldown between alerts |
 | `MONITOR_WARNINGS` | `true` | Monitor warning-level logs |
+
+### Display Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TEMPERATURE_UNIT` | `C` | Temperature display unit (`C` for Celsius, `F` for Fahrenheit) |
+| `DEBUG` | `false` | Enable debug logging |
 
 ### Notification Channels
 
@@ -269,6 +349,61 @@ See [PLEX_API_SETUP.md](PLEX_API_SETUP.md) for Home Assistant automation example
 
 ---
 
+## API Reference
+
+All endpoints return JSON. The base URL is `http://localhost:6500/api`.
+
+### System Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/system/health` | GET | Health check and version info |
+| `/api/system/metrics` | GET | Basic CPU, memory, and disk metrics |
+| `/api/host/metrics` | GET | Comprehensive host monitoring (per-core CPU, temperatures, processes, network interfaces, disk I/O, historical data) |
+
+### Plex Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/plex/status` | GET | Plex server connection status and library info |
+| `/api/plex/streams` | GET | Active streams with transcoding details, codecs, and bandwidth |
+| `/api/plex/recently-added` | GET | Recently added media items (supports `?limit=N`) |
+| `/api/plex/on-deck` | GET | Continue watching items with progress (supports `?limit=N`) |
+
+### Log Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/logs` | GET | Recent log entries (supports `?lines=N&level=error\|warning\|info`) |
+| `/api/logs/stream` | GET | SSE stream for real-time log tailing |
+
+### Alert Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/alerts` | GET | List all alerts with statistics |
+| `/api/alerts` | POST | Create a new alert |
+| `/api/alerts/<id>/resolve` | POST | Resolve an alert (accepts `{"note": "..."}`) |
+| `/api/alerts/<id>` | DELETE | Delete an alert |
+
+### Configuration Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/config` | GET | Get current configuration |
+| `/api/config` | PUT | Update configuration |
+| `/api/notifications/channels` | GET | List notification channels |
+| `/api/notifications/channels/<id>` | PUT | Update a notification channel |
+| `/api/notifications/channels/<id>/test` | POST | Send a test notification |
+
+### Statistics
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/stats` | GET | Dashboard statistics (alert counts, active sessions) |
+
+---
+
 ## Use Cases
 
 ### Home Media Server
@@ -346,7 +481,7 @@ npm run dev
 - **Single Container** - Like other *arr apps
 - **Minimal Resources** - 256-512MB RAM, <5% CPU
 - **Fast** - Vite-powered frontend builds in seconds
-- **Secure** - No deprecated dependencies, actively maintained
+- **Secure** - Python 3.12 base image, actively maintained
 - **TypeScript** - Fully typed frontend for reliability
 
 ---
